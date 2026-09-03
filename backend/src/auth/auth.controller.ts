@@ -6,6 +6,7 @@ import { Response } from 'express';
 import { IsEmail, IsString, MinLength } from 'class-validator';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { SessionTimeoutGuard } from './session-timeout.guard';
 
 export class RegisterDto {
   @IsEmail()
@@ -50,7 +51,7 @@ export class AuthController {
     return result;
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, SessionTimeoutGuard)
   @Post('logout')
   async logout(
     @Request() req: { user: { sub: string } },
@@ -61,7 +62,7 @@ export class AuthController {
     return { success: true };
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, SessionTimeoutGuard)
   @Get('me')
   me(@Request() req: { user: { sub: string } }) {
     return this.authService.me(req.user.sub);

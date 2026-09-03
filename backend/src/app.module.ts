@@ -10,6 +10,7 @@ import { PrivacyAssistanceModule } from './privacy-assistance/privacy-assistance
 import { RedisModule } from './redis/redis.module';
 import { EmailModule } from './email/email.module';
 import { ProfileModule } from './profile/profile.module';
+import { StorageModule } from './storage/storage.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { ProfileModule } from './profile/profile.module';
     CommunityModule,
     PrivacyAssistanceModule,
     ProfileModule,
+    StorageModule,
   ],
 })
 export class AppModule {}

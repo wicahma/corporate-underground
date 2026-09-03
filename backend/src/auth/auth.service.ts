@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
+import { hashEmail } from './email-hash.util';
 
 const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60; // 7d, keep in sync with JWT_EXPIRES_IN
 
@@ -27,29 +28,31 @@ export class AuthService {
 
   async register(email: string, password: string) {
     const normalized = email.trim().toLowerCase();
-    const existing = await this.prisma.user.findUnique({ where: { email: normalized } });
+    const emailHash = hashEmail(normalized);
+    const existing = await this.prisma.user.findFirst({ where: { emailHash } });
     if (existing) throw new ConflictException('Email already registered');
     const passwordHash = await bcrypt.hash(password, 10);
     const user = await this.prisma.user.create({
-      data: { email: normalized, passwordHash },
+      data: { email: normalized, emailHash, passwordHash },
       select: { id: true, email: true, createdAt: true },
     });
     const sessionId = this.issueToken(user.id);
     await this.redis.set(this.sessionKey(user.id), sessionId, SESSION_TTL_SECONDS);
+    await this.redis.set(`session:${user.id}:lastActivity`, Date.now().toString(), SESSION_TTL_SECONDS);
     return { user: this.formatUser(user), accessToken: sessionId };
   }
 
   async login(email: string, password: string) {
     const normalized = email.trim().toLowerCase();
-    const user = await this.prisma.user.findUnique({ where: { email: normalized } });
+    const emailHash = hashEmail(normalized);
+    const user = await this.prisma.user.findFirst({ where: { emailHash } });
     if (!user) throw new UnauthorizedException('Invalid credentials');
     const passwordOk = await bcrypt.compare(password, user.passwordHash);
     if (!passwordOk) throw new UnauthorizedException('Invalid credentials');
 
-    // Single-session enforcement: new login overwrites the Redis session key,
-    // invalidating any previously issued token.
     const sessionId = this.issueToken(user.id);
     await this.redis.set(this.sessionKey(user.id), sessionId, SESSION_TTL_SECONDS);
+    await this.redis.set(`session:${user.id}:lastActivity`, Date.now().toString(), SESSION_TTL_SECONDS);
     return { user: this.formatUser(user), accessToken: sessionId };
   }
 
@@ -72,7 +75,7 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
-        id: true, email: true, createdAt: true,
+        id: true, email: true, photoUrl: true, createdAt: true,
         memberships: {
           select: {
             id: true,

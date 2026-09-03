@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { StorageService } from '../storage/storage.service';
 
 export interface ReputationTier {
   name: string;
@@ -32,7 +33,10 @@ export function tierForScore(score: number): ReputationTier {
 
 @Injectable()
 export class ProfileService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private storage: StorageService,
+  ) {}
 
   async computeIdentityStats(identityId: string) {
     const [likes, postComments, pollVotes, posts] = await Promise.all([
@@ -77,12 +81,13 @@ export class ProfileService {
       },
     });
     if (!user) throw new NotFoundException('User not found');
-    return { id: user.id, email: user.email, createdAt: user.createdAt, memberships: user.memberships };
+    return { id: user.id, email: user.email, photoUrl: user.photoUrl, createdAt: user.createdAt, memberships: user.memberships };
   }
 
-  async getPublicProfile(identityId: string) {
-    const identity = await this.prisma.anonymousIdentity.findUnique({
-      where: { id: identityId },
+  async getPublicProfile(identifier: string) {
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
+    const identity = await this.prisma.anonymousIdentity.findFirst({
+      where: isUUID ? { id: identifier } : { pseudonym: identifier },
       include: {
         company: { select: { id: true, slug: true, name: true } },
         posts: {
@@ -97,7 +102,7 @@ export class ProfileService {
     });
     if (!identity || identity.isBanned) throw new NotFoundException('Identity not found');
 
-    const stats = await this.computeIdentityStats(identityId);
+    const stats = await this.computeIdentityStats(identity.id);
     return {
       pseudonym: identity.pseudonym,
       avatarSeed: identity.avatarSeed,
@@ -107,5 +112,21 @@ export class ProfileService {
       stats,
       posts: identity.posts,
     };
+  }
+
+  async uploadProfilePhoto(userId: string, file: Express.Multer.File) {
+    if (!file) throw new BadRequestException('No file provided');
+    if (file.size > 5 * 1024 * 1024) throw new BadRequestException('File too large (max 5MB)');
+    if (!file.mimetype.startsWith('image/')) throw new BadRequestException('Invalid file type');
+
+    const key = `profiles/${userId}.webp`;
+    const { url } = await this.storage.uploadImage(file.buffer, key, file.mimetype);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { photoUrl: url },
+    });
+
+    return { photoUrl: url };
   }
 }

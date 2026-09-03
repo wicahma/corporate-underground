@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { api, authApi, type Post, normPost, fmtDate } from "@/lib/api";
+import { api, authApi, profileApi, type Post, normPost, fmtDate } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { RequireAuth } from "@/components/RequireAuth";
 import { Shell } from "@/components/Shell";
@@ -20,6 +20,10 @@ import {
   AlertCircle,
   CheckCircle2,
   Lock,
+  Camera,
+  Upload,
+  X,
+  Loader2,
 } from "lucide-react";
 
 interface SelfMembership {
@@ -48,6 +52,7 @@ interface SelfMembership {
 interface SelfProfile {
   id: string;
   email: string;
+  photoUrl?: string | null;
   createdAt: string;
   memberships: SelfMembership[];
 }
@@ -64,11 +69,20 @@ export default function ProfilePage() {
 
 function ProfileContent() {
   const router = useRouter();
-  const { logout } = useAuth();
+  const { logout, refresh: refreshAuth } = useAuth();
 
   const [profile, setProfile] = useState<SelfProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Photo upload state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [photoSuccess, setPhotoSuccess] = useState<string | null>(null);
+  const [cropZoom, setCropZoom] = useState(1);
 
   // Change password state
   const [oldPassword, setOldPassword] = useState("");
@@ -94,6 +108,57 @@ function ProfileContent() {
     };
     void fetchProfile();
   }, []);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPhotoError(null);
+    setPhotoSuccess(null);
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setPhotoError("Only image files are allowed.");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setPhotoError("Image must be smaller than 5MB.");
+      return;
+    }
+
+    setSelectedFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setPreviewUrl(ev.target?.result as string);
+      setCropZoom(1);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handlePhotoUpload = async () => {
+    if (!selectedFile) return;
+    setUploadingPhoto(true);
+    setPhotoError(null);
+    setPhotoSuccess(null);
+    try {
+      const res = await profileApi.uploadPhoto(selectedFile);
+      setProfile((prev) => (prev ? { ...prev, photoUrl: res.photoUrl } : prev));
+      setPhotoSuccess("Avatar photo updated successfully.");
+      setSelectedFile(null);
+      setPreviewUrl(null);
+      await refreshAuth();
+    } catch (err: unknown) {
+      setPhotoError((err as Error).message || "Failed to upload photo.");
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const cancelPhotoSelection = () => {
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    setPhotoError(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -145,23 +210,142 @@ function ProfileContent() {
     <div className="max-w-4xl mx-auto px-4 pt-12 pb-20">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 mb-8 border-b border-line">
-        <div>
-          <div className="label mb-1">// IDENTITY VAULT</div>
-          <h1 className="text-xl font-bold tracking-tight text-fg uppercase">
-            Account & Pseudonyms
-          </h1>
-          <p className="text-[11px] text-dim font-mono mt-1">
-            {profile?.email} · SEALED REAL IDENTITY
-          </p>
+        <div className="flex items-center gap-4">
+          <div className="relative group w-14 h-14 bg-panel2 border border-line flex items-center justify-center overflow-hidden shrink-0">
+            {profile?.photoUrl ? (
+              <img
+                src={profile.photoUrl}
+                alt="Profile Avatar"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <Identicon seed={profile?.email || "anon"} size={48} />
+            )}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              title="Change Photo"
+              className="absolute inset-0 bg-ink/70 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-fg"
+            >
+              <Camera className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div>
+            <div className="label mb-1">// IDENTITY VAULT</div>
+            <h1 className="text-xl font-bold tracking-tight text-fg uppercase">
+              Account & Pseudonyms
+            </h1>
+            <p className="text-[11px] text-dim font-mono mt-1">
+              {profile?.email} · SEALED REAL IDENTITY
+            </p>
+          </div>
         </div>
-        <button
-          onClick={() => setShowLogoutModal(true)}
-          className="btn btn-danger text-xs self-start sm:self-auto flex items-center gap-1.5"
-        >
-          <LogOut className="w-3.5 h-3.5" />
-          Terminate Session
-        </button>
+
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="btn text-xs flex items-center gap-1.5"
+          >
+            <Upload className="w-3.5 h-3.5" />
+            Upload Photo
+          </button>
+          <button
+            onClick={() => setShowLogoutModal(true)}
+            className="btn btn-danger text-xs flex items-center gap-1.5"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            Terminate Session
+          </button>
+        </div>
       </div>
+
+      {photoError && (
+        <div className="mb-6 p-4 border border-danger bg-danger/10 text-danger text-xs flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{photoError}</span>
+        </div>
+      )}
+
+      {photoSuccess && (
+        <div className="mb-6 p-4 border border-emerald-500/40 bg-emerald-500/10 text-emerald-300 text-xs flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
+          <span>{photoSuccess}</span>
+        </div>
+      )}
+
+      {/* Crop / Photo Preview Modal */}
+      {previewUrl && (
+        <div className="card p-6 border-fg/50 bg-panel mb-8 space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-line">
+            <span className="label font-bold">// PREVIEW & CROP AVATAR</span>
+            <button
+              onClick={cancelPhotoSelection}
+              className="text-dim hover:text-fg"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center gap-6">
+            <div className="relative w-40 h-40 border-2 border-line bg-panel2 overflow-hidden flex items-center justify-center shrink-0">
+              <img
+                src={previewUrl}
+                alt="Avatar Crop Preview"
+                style={{
+                  transform: `scale(${cropZoom})`,
+                  objectFit: "cover",
+                }}
+                className="w-full h-full transition-transform duration-100"
+              />
+              <div className="absolute inset-0 pointer-events-none border border-fg/30 rounded-full" />
+            </div>
+
+            <div className="flex-1 w-full space-y-3">
+              <div>
+                <label className="label block mb-1">Scale / Crop Zoom: {cropZoom.toFixed(1)}x</label>
+                <input
+                  type="range"
+                  min="1"
+                  max="3"
+                  step="0.1"
+                  value={cropZoom}
+                  onChange={(e) => setCropZoom(parseFloat(e.target.value))}
+                  className="w-full accent-fg"
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => void handlePhotoUpload()}
+                  disabled={uploadingPhoto}
+                  className="btn btn-primary text-xs flex-1 flex items-center justify-center gap-1.5"
+                >
+                  {uploadingPhoto ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                  )}
+                  {uploadingPhoto ? "UPLOADING..." : "SAVE AVATAR PHOTO"}
+                </button>
+                <button
+                  onClick={cancelPhotoSelection}
+                  disabled={uploadingPhoto}
+                  className="btn text-xs px-4"
+                >
+                  CANCEL
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="mb-6 p-4 border border-danger bg-danger/10 text-danger text-xs flex items-center gap-2">

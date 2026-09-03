@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { type PostType, communityApi, privacyApi, type LeakResult, type Post } from "@/lib/api";
 import { LeakDetectorModal } from "./LeakDetectorModal";
-import { Send, AlertCircle, Plus, Trash2 } from "lucide-react";
+import { ImageUpload, type UploadedImage } from "./ImageUpload";
+import { Send, AlertCircle, Plus, Trash2, Image as ImageIcon } from "lucide-react";
 
 export function PostCreator({
   companySlug,
@@ -16,6 +17,8 @@ export function PostCreator({
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [pollOptions, setPollOptions] = useState<string[]>(["", ""]);
+  const [images, setImages] = useState<UploadedImage[]>([]);
+  const [showImageUpload, setShowImageUpload] = useState(false);
   const [leakResult, setLeakResult] = useState<LeakResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -83,6 +86,8 @@ export function PostCreator({
       setTitle("");
       setContent("");
       setPollOptions(["", ""]);
+      setImages([]);
+      setShowImageUpload(false);
       setType("NORMAL");
       setLeakResult(null);
       onCreated(created);
@@ -195,6 +200,53 @@ export function PostCreator({
             )}
           </div>
         )}
+
+        {/* Image Upload Section */}
+        <div className="pt-2 border-t border-line/50">
+          <button
+            type="button"
+            onClick={() => setShowImageUpload(!showImageUpload)}
+            className="btn text-[10px] py-1 px-2.5 flex items-center gap-1"
+          >
+            <ImageIcon className="w-3 h-3" />
+            {showImageUpload ? "Hide Images" : "Attach Images"}
+            {images.length > 0 && ` (${images.length})`}
+          </button>
+
+          {showImageUpload && (
+            <div className="mt-3">
+              <ImageUpload
+                onUploadComplete={(uploadedImages) => {
+                  setImages([...images, ...uploadedImages]);
+                }}
+              />
+            </div>
+          )}
+
+          {images.length > 0 && (
+            <div className="mt-3 space-y-2">
+              <div className="label">Attached Images:</div>
+              <div className="grid grid-cols-3 gap-2">
+                {images.map((img, idx) => (
+                  <div key={img.id} className="relative group">
+                    <img
+                      src={img.url}
+                      alt={`Upload ${idx + 1}`}
+                      className="w-full h-20 object-cover border border-line"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setImages(images.filter((_, i) => i !== idx))}
+                      className="absolute top-1 right-1 bg-danger/80 hover:bg-danger text-white p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
 
         <div className="flex items-center justify-between pt-2">
           <div className="text-[10px] text-dim font-mono">

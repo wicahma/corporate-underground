@@ -1,20 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { authApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Shell } from "@/components/Shell";
-import { KeyRound, AlertCircle } from "lucide-react";
+import { KeyRound, AlertCircle, ShieldAlert } from "lucide-react";
 
 export default function LoginPage() {
+  return (
+    <Shell>
+      <Suspense fallback={<div className="max-w-sm mx-auto px-4 pt-24 pb-20"><div className="card p-8 border-line animate-pulse"><div className="h-4 bg-panel2 w-1/3 mb-2" /><div className="h-3 bg-panel2 w-2/3" /></div></div>}>
+        <LoginForm />
+      </Suspense>
+    </Shell>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { refresh } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("session_expired") === "1") {
+      setSessionExpired(true);
+    }
+  }, [searchParams]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,19 +51,25 @@ export default function LoginPage() {
   };
 
   return (
-    <Shell>
-      <div className="max-w-sm mx-auto px-4 pt-24 pb-20">
-        <div className="card p-8 border-line">
-          <div className="mb-8">
-            <div className="label mb-2">// ACCESS GATE</div>
-            <h1 className="text-xl font-bold tracking-tight text-fg">
-              SIGN IN
-            </h1>
-            <p className="text-[11px] text-dim mt-2 font-mono">
-              Your real identity stays sealed. We only issue your session
-              token.
-            </p>
-          </div>
+    <div className="max-w-sm mx-auto px-4 pt-24 pb-20">
+      <div className="card p-8 border-line">
+        <div className="mb-8">
+          <div className="label mb-2">// ACCESS GATE</div>
+          <h1 className="text-xl font-bold tracking-tight text-fg">
+            SIGN IN
+          </h1>
+          <p className="text-[11px] text-dim mt-2 font-mono">
+            Your real identity stays sealed. We only issue your session
+            token.
+          </p>
+        </div>
+
+          {sessionExpired && (
+            <div className="mb-5 p-3 border border-amber-500/50 bg-amber-500/10 text-amber-300 text-[11px] flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 shrink-0" />
+              <span>Session expired. Please sign in again.</span>
+            </div>
+          )}
 
           {error && (
             <div className="mb-5 p-3 border border-danger bg-danger/10 text-danger text-[11px] flex items-center gap-2">
@@ -102,6 +126,5 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
-    </Shell>
   );
 }

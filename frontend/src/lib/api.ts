@@ -2,6 +2,8 @@
 // Base: NEXT_PUBLIC_API_URL or relative /api (reverse-proxied to NestJS backend).
 // Auth: HTTP-only cookies (set by backend), sent automatically with credentials: "include".
 
+import { showToast } from "./toast";
+
 export const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "/api";
 
 export class ApiError extends Error {
@@ -24,6 +26,10 @@ export async function api<T>(path: string, opts: RequestInit = {}): Promise<T> {
     headers,
     credentials: "include",
   });
+  if (res.status === 401) {
+    handleSessionExpired();
+    throw new ApiError(401, "Session expired. Please sign in again.");
+  }
   if (!res.ok) {
     let message = `HTTP ${res.status}`;
     try {
@@ -36,6 +42,30 @@ export async function api<T>(path: string, opts: RequestInit = {}): Promise<T> {
   }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
+}
+
+let redirectingToLogin = false;
+
+/**
+ * 401 interceptor: show a toast and redirect to /login once.
+ * Never causes a loop — skips auth endpoints during initial load.
+ */
+export function handleSessionExpired() {
+  if (typeof window === "undefined") return;
+  if (redirectingToLogin) return;
+
+  const path = window.location.pathname;
+  if (path.startsWith("/login") || path.startsWith("/register")) return;
+
+  // Skip silent background /auth/me checks (initial load) — RequireAuth handles those.
+  // Only hard-redirect when an API call the user actually triggered returns 401,
+  // so just use the global flag to avoid redirect storms from parallel calls.
+  redirectingToLogin = true;
+  showToast("Session expired. Please sign in again.", "warning");
+  const target = `/login?session_expired=1&next=${encodeURIComponent(
+    path + window.location.search,
+  )}`;
+  window.location.assign(target);
 }
 
 // ---- Types ----
@@ -104,6 +134,7 @@ export interface Pulse {
 export interface UserMe {
   id: string;
   email: string;
+  photoUrl?: string | null;
   memberships: { company: Company; status: string }[];
 }
 
@@ -189,6 +220,7 @@ export function normUser(raw: unknown): UserMe {
   return {
     id: (r.id as string) ?? "",
     email: (r.email as string) ?? "",
+    photoUrl: (r.photoUrl as string) ?? null,
     memberships: ms,
   };
 }
@@ -218,6 +250,21 @@ export function normList(raw: unknown): unknown[] {
   if (r && Array.isArray(r.items)) return r.items;
   if (r && Array.isArray(r.companies)) return r.companies;
   return [];
+}
+
+export interface FeedResponse {
+  posts: Post[];
+  nextCursor: string | null;
+}
+
+export function normFeed(raw: unknown): FeedResponse {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const posts = normList(r.posts ?? r.items ?? []).map(normPost) as Post[];
+  const nextCursor =
+    typeof r.nextCursor === "string" && r.nextCursor.length > 0
+      ? r.nextCursor
+      : null;
+  return { posts, nextCursor };
 }
 
 // Flatten any nesting then rebuild tree from parentId links.
@@ -294,7 +341,7 @@ export const communityApi = {
     const query = params.toString();
     return api<unknown>(
       `/community/${encodeURIComponent(slug)}/feed${query ? `?${query}` : ""}`,
-    ).then((r) => normList(r).map(normPost));
+    ).then(normFeed);
   },
   createPost: (
     slug: string,
@@ -367,4 +414,29 @@ export const privacyApi = {
       method: "POST",
       body: JSON.stringify({ content }),
     }),
+};
+
+export const profileApi = {
+  getSelf: () => api<Record<string, unknown>>("/profile"),
+  uploadPhoto: (file: File) => {
+    const formData = new FormData();
+    formData.append("photo", file);
+    return fetch(`${API_BASE}/profile/photo`, {
+      method: "POST",
+      credentials: "include",
+      body: formData,
+    }).then(async (res) => {
+      if (!res.ok) {
+        let msg = "Upload failed";
+        try {
+          const json = await res.json() as { message?: string };
+          if (json.message) msg = json.message;
+        } catch {
+          /* non-JSON error body */
+        }
+        throw new ApiError(res.status, msg);
+      }
+      return (await res.json()) as { photoUrl: string };
+    });
+  },
 };

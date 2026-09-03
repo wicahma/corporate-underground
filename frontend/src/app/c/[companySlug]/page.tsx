@@ -36,6 +36,8 @@ function FeedInner({ companySlug }: { companySlug: string }) {
   const [joinNotice, setJoinNotice] = useState<string | null>(null);
 
   const cursorRef = useRef<string | null>(null);
+  const fetchingRef = useRef(false);
+  const hasMoreRef = useRef(true);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
@@ -49,11 +51,14 @@ function FeedInner({ companySlug }: { companySlug: string }) {
   const load = useCallback(
     async (append = false) => {
       if (!isMember) return;
-      if (append && !hasMore) return;
+      if (append && (!hasMoreRef.current || !cursorRef.current)) return;
+      if (fetchingRef.current) return;
+
+      fetchingRef.current = true;
       (append ? setLoadMore : setLoading)(true);
       setError(null);
       try {
-        const [c, f] = await Promise.all([
+        const [c, feedData] = await Promise.all([
           companiesApi.bySlug(companySlug).catch(() => ({
             id: "",
             name: companySlug.toUpperCase(),
@@ -70,30 +75,38 @@ function FeedInner({ companySlug }: { companySlug: string }) {
           ),
         ]);
         setCompany(c);
+        const { posts: newPosts, nextCursor } = feedData;
+
         if (append) {
           setPosts((prev) => {
             const seen = new Set(prev.map((p) => p.id));
-            return [...prev, ...f.filter((p) => !seen.has(p.id))];
+            return [...prev, ...newPosts.filter((p) => !seen.has(p.id))];
           });
         } else {
-          setPosts(f);
+          setPosts(newPosts);
         }
-        cursorRef.current = f.length ? (f[f.length - 1].id ?? null) : null;
-        setHasMore(f.length > 0);
+
+        cursorRef.current = nextCursor;
+        const more = Boolean(nextCursor);
+        hasMoreRef.current = more;
+        setHasMore(more);
       } catch (err: unknown) {
         setError((err as Error).message || "Failed to load feed.");
+        hasMoreRef.current = false;
         setHasMore(false);
       } finally {
+        fetchingRef.current = false;
         (append ? setLoadMore : setLoading)(false);
       }
     },
-    [companySlug, filter, sort, hasMore, isMember],
+    [companySlug, filter, sort, isMember],
   );
 
   // Reset pagination when filter/sort changes
   useEffect(() => {
     if (!isMember) return;
     cursorRef.current = null;
+    hasMoreRef.current = true;
     setHasMore(true);
     const t = window.setTimeout(() => void load(false), 0);
     return () => window.clearTimeout(t);
@@ -101,10 +114,17 @@ function FeedInner({ companySlug }: { companySlug: string }) {
 
   // Infinite scroll sentinel
   useEffect(() => {
-    if (!isMember || observerRef.current) return;
+    if (!isMember) return;
+    if (observerRef.current) observerRef.current.disconnect();
+
     observerRef.current = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting && hasMore && !loading && !loadMore) {
+        if (
+          entries[0]?.isIntersecting &&
+          hasMoreRef.current &&
+          !fetchingRef.current &&
+          cursorRef.current
+        ) {
           void load(true);
         }
       },
@@ -115,7 +135,7 @@ function FeedInner({ companySlug }: { companySlug: string }) {
       observerRef.current?.disconnect();
       observerRef.current = null;
     };
-  }, [isMember, hasMore, loading, loadMore, load]);
+  }, [isMember, load]);
 
   // Company fetch for non-members (still show join UI + info)
   useEffect(() => {
