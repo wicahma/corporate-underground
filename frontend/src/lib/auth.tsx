@@ -8,20 +8,20 @@ import {
   useMemo,
   useState,
 } from "react";
-import { api, normUser, tokenStore, type UserMe } from "./api";
+import { api, normUser, type UserMe } from "./api";
 
 interface AuthCtxValue {
   user: UserMe | null;
   loading: boolean;
   refresh: () => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthCtxValue>({
   user: null,
   loading: true,
   refresh: async () => {},
-  logout: () => {},
+  logout: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -29,15 +29,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    if (!tokenStore.get()) {
-      setUser(null);
-      setLoading(false);
-      return;
-    }
     try {
       setUser(normUser(await api<unknown>("/auth/me")));
     } catch {
-      tokenStore.set(null);
       setUser(null);
     } finally {
       setLoading(false);
@@ -49,8 +43,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => window.clearTimeout(t);
   }, [refresh]);
 
-  const logout = useCallback(() => {
-    tokenStore.set(null);
+  const logout = useCallback(async () => {
+    try {
+      await api<void>("/auth/logout", { method: "POST" });
+    } catch {
+      /* server session may already be gone */
+    }
     setUser(null);
   }, []);
 

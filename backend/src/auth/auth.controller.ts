@@ -1,7 +1,8 @@
 import {
-  Controller, Post, Get, Body, Request,
-  UseGuards, UnauthorizedException, ConflictException,
+  Controller, Post, Get, Body, Request, Res,
+  UseGuards,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { IsEmail, IsString, MinLength } from 'class-validator';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
@@ -23,18 +24,41 @@ export class LoginDto {
   password!: string;
 }
 
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax' as const,
+  path: '/',
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+};
+
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Post('register')
-  register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto.email, dto.password);
+  async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: Response) {
+    const result = await this.authService.register(dto.email, dto.password);
+    res.cookie('accessToken', result.accessToken, COOKIE_OPTIONS);
+    return result;
   }
 
   @Post('login')
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto.email, dto.password);
+  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
+    const result = await this.authService.login(dto.email, dto.password);
+    res.cookie('accessToken', result.accessToken, COOKIE_OPTIONS);
+    return result;
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('logout')
+  async logout(
+    @Request() req: { user: { sub: string } },
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    await this.authService.logout(req.user.sub);
+    res.clearCookie('accessToken', { path: '/' });
+    return { success: true };
   }
 
   @UseGuards(JwtAuthGuard)

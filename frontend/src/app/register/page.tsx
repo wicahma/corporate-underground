@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { authApi, tokenStore } from "@/lib/api";
+import { authApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Shell } from "@/components/Shell";
 import { Fingerprint, AlertCircle } from "lucide-react";
@@ -30,12 +30,8 @@ export default function RegisterPage() {
     }
     setLoading(true);
     try {
-      const res = await authApi.register(email, password);
-      const token = (res as Record<string, unknown>).accessToken ?? (res as Record<string, unknown>).token;
-      if (token) {
-        tokenStore.set(String(token));
-        await refresh();
-      }
+      await authApi.register(email, password);
+      await refresh();
       router.push("/verify");
     } catch (err: unknown) {
       setError((err as Error).message || "Registration failed.");

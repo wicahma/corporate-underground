@@ -5,7 +5,7 @@ import Link from "next/link";
 import { type Post, communityApi, fmtDate } from "@/lib/api";
 import { Identicon } from "./Identicon";
 import { PollWidget } from "./PollWidget";
-import { MessageSquare, ThumbsUp, Flame, Lock, Radio } from "lucide-react";
+import { MessageSquare, ThumbsUp, Flame, AlertTriangle } from "lucide-react";
 
 const TYPE_TAG: Record<string, { label: string; tone: string }> = {
   NORMAL: { label: "NOTE", tone: "text-dim border-line" },
@@ -27,6 +27,8 @@ export function FeedCard({
   const [liked, setLiked] = useState(false);
   const tag = TYPE_TAG[post.type] ?? TYPE_TAG.NORMAL;
 
+  const isVerified = (post.metadata as Record<string, unknown> | null)?.verifiedEmployee ?? true;
+
   const handleLike = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -43,15 +45,31 @@ export function FeedCard({
     <article className="card p-5 hover:border-fg/40 transition-colors">
       <header className="flex items-center justify-between gap-3 text-xs mb-3 pb-3 border-b border-line">
         <div className="flex items-center gap-2.5">
-          <Identicon seed={post.author.avatarSeed || post.author.pseudonym} />
-          <div className="flex flex-col">
-            <span className="font-semibold text-fg text-xs tracking-wider">
-              {post.author.pseudonym}
-            </span>
-            <span className="text-[10px] text-dim font-mono">
-              REP {post.author.reputation}
-            </span>
-          </div>
+          <Link
+            href={`/u/${encodeURIComponent(post.author.pseudonym)}`}
+            className="flex items-center gap-2.5 hover:opacity-80"
+          >
+            <Identicon seed={post.author.avatarSeed || post.author.pseudonym} />
+            <div className="flex flex-col">
+              <div className="flex items-center gap-1.5">
+                <span className="font-semibold text-fg text-xs tracking-wider">
+                  {post.author.pseudonym}
+                </span>
+                {!isVerified && (
+                  <span
+                    className="tag border-amber-500/40 text-amber-400 bg-amber-500/10 text-[9px] flex items-center gap-1"
+                    title="This user has not verified their employment with this company"
+                  >
+                    <AlertTriangle className="w-2.5 h-2.5" />
+                    Not an Employee
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] text-dim font-mono">
+                REP {post.author.reputation}
+              </span>
+            </div>
+          </Link>
         </div>
         <div className="flex items-center gap-2">
           <span className={`tag ${tag.tone}`}>{tag.label}</span>

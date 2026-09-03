@@ -1,6 +1,7 @@
-import { Controller, Get, Post, Body, Param, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, Request, NotFoundException } from '@nestjs/common';
 import { IsArray, IsOptional, IsString, IsUrl, Matches, MinLength } from 'class-validator';
 import { CompanyService } from './company.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 export class CreateCompanyDto {
   @IsString()
@@ -44,5 +45,14 @@ export class CompanyController {
   @Post()
   create(@Body() dto: CreateCompanyDto) {
     return this.companyService.create(dto);
+  }
+
+  @Post(':slug/join')
+  @UseGuards(JwtAuthGuard)
+  async join(
+    @Request() req: { user: { sub: string } },
+    @Param('slug') slug: string,
+  ) {
+    return this.companyService.joinAsUnverified(req.user.sub, slug);
   }
 }

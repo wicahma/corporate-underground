@@ -1,20 +1,8 @@
 // API client — Corporate Underground frontend.
 // Base: NEXT_PUBLIC_API_URL or relative /api (reverse-proxied to NestJS backend).
+// Auth: HTTP-only cookies (set by backend), sent automatically with credentials: "include".
 
 export const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "/api";
-const TOKEN_KEY = "cu_token";
-
-export const tokenStore = {
-  get(): string | null {
-    if (typeof window === "undefined") return null;
-    return window.localStorage.getItem(TOKEN_KEY);
-  },
-  set(token: string | null) {
-    if (typeof window === "undefined") return;
-    if (token) window.localStorage.setItem(TOKEN_KEY, token);
-    else window.localStorage.removeItem(TOKEN_KEY);
-  },
-};
 
 export class ApiError extends Error {
   constructor(
@@ -31,9 +19,11 @@ export async function api<T>(path: string, opts: RequestInit = {}): Promise<T> {
     "Content-Type": "application/json",
     ...(opts.headers as Record<string, string> | undefined),
   };
-  const token = tokenStore.get();
-  if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(`${API_BASE}${path}`, { ...opts, headers });
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...opts,
+    headers,
+    credentials: "include",
+  });
   if (!res.ok) {
     let message = `HTTP ${res.status}`;
     try {
@@ -42,7 +32,6 @@ export async function api<T>(path: string, opts: RequestInit = {}): Promise<T> {
     } catch {
       /* non-JSON error body */
     }
-    if (res.status === 401) tokenStore.set(null);
     throw new ApiError(res.status, message);
   }
   if (res.status === 204) return undefined as T;
@@ -138,7 +127,7 @@ export function normCompany(raw: unknown): Company {
     members:
       (r.members as number) ??
       (r.memberCount as number) ??
-      (r.verifiedMembers as number) ??
+      (r.verified_members as number) ??
       0,
   };
 }
@@ -274,6 +263,13 @@ export const authApi = {
       method: "POST",
       body: JSON.stringify({ email, password }),
     }),
+  logout: () =>
+    api<void>("/auth/logout", { method: "POST" }),
+  changePassword: (oldPassword: string, newPassword: string) =>
+    api<void>("/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ oldPassword, newPassword }),
+    }),
 };
 
 export const companiesApi = {
@@ -285,22 +281,28 @@ export const companiesApi = {
     api<unknown>(`/companies/${encodeURIComponent(slug)}`).then(normCompany),
   pulse: (slug: string) =>
     api<unknown>(`/companies/${encodeURIComponent(slug)}/pulse`).then(normPulse),
+  join: (slug: string) =>
+    api<unknown>(`/companies/${encodeURIComponent(slug)}/join`, { method: "POST" }),
 };
 
 export const communityApi = {
-  feed: (slug: string, type?: string) =>
-    api<unknown>(
-      `/community/${encodeURIComponent(slug)}/feed${
-        type && type !== "ALL" ? `?type=${encodeURIComponent(type)}` : ""
-      }`,
-    ).then((r) => normList(r).map(normPost)),
+  feed: (slug: string, type?: string, sort?: string, cursor?: string) => {
+    const params = new URLSearchParams();
+    if (type && type !== "ALL") params.set("type", type);
+    if (sort && sort !== "latest") params.set("sort", sort);
+    if (cursor) params.set("cursor", cursor);
+    const query = params.toString();
+    return api<unknown>(
+      `/community/${encodeURIComponent(slug)}/feed${query ? `?${query}` : ""}`,
+    ).then((r) => normList(r).map(normPost));
+  },
   createPost: (
     slug: string,
     body: {
       type: PostType;
       title?: string;
       content: string;
-      options?: string[];
+      pollOptions?: string[];
       leakCheckConsent: boolean;
     },
   ) =>

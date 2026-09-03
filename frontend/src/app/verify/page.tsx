@@ -10,33 +10,36 @@ import {
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Shell } from "@/components/Shell";
+import { RequireAuth } from "@/components/RequireAuth";
 import { ShieldCheck, AlertCircle, Search, Hash, Loader2 } from "lucide-react";
 
 type Mode = "company" | "otp" | "code";
 
 export default function VerifyPage() {
   return (
-    <Shell>
-      <Suspense
-        fallback={
-          <div className="max-w-xl mx-auto px-4 pt-14 pb-20">
-            <div className="card p-8 border-line animate-pulse space-y-4">
-              <div className="h-4 bg-panel2 w-1/3" />
-              <div className="h-3 bg-panel2 w-2/3" />
+    <RequireAuth>
+      <Shell>
+        <Suspense
+          fallback={
+            <div className="max-w-xl mx-auto px-4 pt-14 pb-20">
+              <div className="card p-8 border-line animate-pulse space-y-4">
+                <div className="h-4 bg-panel2 w-1/3" />
+                <div className="h-3 bg-panel2 w-2/3" />
+              </div>
             </div>
-          </div>
-        }
-      >
-        <VerifyContent />
-      </Suspense>
-    </Shell>
+          }
+        >
+          <VerifyContent />
+        </Suspense>
+      </Shell>
+    </RequireAuth>
   );
 }
 
 function VerifyContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user } = useAuth();
+  const { user, refresh } = useAuth();
 
   const [mode, setMode] = useState<Mode>("company");
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -100,6 +103,7 @@ function VerifyContent() {
     try {
       await verificationApi.verifyOtp(requestId, otp);
       setNotice("Membership verified. Redirecting to your compound...");
+      await refresh();
       setTimeout(() => {
         if (selected) router.push(`/c/${selected.slug}`);
       }, 900);
@@ -116,6 +120,7 @@ function VerifyContent() {
     setError(null);
     try {
       const res = await verificationApi.claimCode(inviteCode.trim());
+      await refresh();
       const companyData = res.company as { slug?: string } | undefined;
       const slug = companyData?.slug;
       if (slug) {

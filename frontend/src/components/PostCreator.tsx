@@ -76,7 +76,7 @@ export function PostCreator({
         type,
         title: title.trim() || undefined,
         content: content.trim(),
-        options: validOptions,
+        pollOptions: validOptions,
         leakCheckConsent: consent,
       });
 

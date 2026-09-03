@@ -7,17 +7,23 @@ import { VerificationModule } from './verification/verification.module';
 import { AnonymousIdentityModule } from './anonymous-identity/anonymous-identity.module';
 import { CommunityModule } from './community/community.module';
 import { PrivacyAssistanceModule } from './privacy-assistance/privacy-assistance.module';
+import { RedisModule } from './redis/redis.module';
+import { EmailModule } from './email/email.module';
+import { ProfileModule } from './profile/profile.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
+    RedisModule,
+    EmailModule,
     AuthModule,
     CompanyModule,
     VerificationModule,
     AnonymousIdentityModule,
     CommunityModule,
     PrivacyAssistanceModule,
+    ProfileModule,
   ],
 })
 export class AppModule {}

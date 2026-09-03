@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnonymousIdentityService } from '../anonymous-identity/anonymous-identity.service';
+import { EmailService } from '../email/email.service';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -8,6 +9,7 @@ export class VerificationService {
   constructor(
     private prisma: PrismaService,
     private identityService: AnonymousIdentityService,
+    private emailService: EmailService,
   ) {}
 
   async requestEmailOtp(userId: string, companySlug: string, workEmail: string) {
@@ -52,10 +54,13 @@ export class VerificationService {
       },
     });
 
+    // Send real email via SMTP / nodemailer
+    await this.emailService.sendOtp(normalizedEmail, otp, company.name);
+
     return {
       requestId: request.id,
       message: `OTP sent to ${normalizedEmail} (expires in 15 minutes)`,
-      devOtp: otp,
+      devOtp: process.env.NODE_ENV !== 'production' ? otp : undefined,
     };
   }
 

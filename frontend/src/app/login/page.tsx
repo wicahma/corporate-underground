@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { authApi, tokenStore } from "@/lib/api";
+import { authApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Shell } from "@/components/Shell";
 import { KeyRound, AlertCircle } from "lucide-react";
@@ -22,10 +22,7 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await authApi.login(email, password);
-      const token = (res as Record<string, unknown>).accessToken ?? (res as Record<string, unknown>).token;
-      if (!token) throw new Error("No access token returned by server.");
-      tokenStore.set(String(token));
+      await authApi.login(email, password);
       await refresh();
       router.push("/verify");
     } catch (err: unknown) {
