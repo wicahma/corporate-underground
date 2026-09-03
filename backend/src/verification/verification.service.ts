@@ -2,7 +2,6 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { AnonymousIdentityService } from '../anonymous-identity/anonymous-identity.service';
 import * as bcrypt from 'bcrypt';
-import * as crypto from 'crypto';
 
 @Injectable()
 export class VerificationService {
@@ -24,7 +23,6 @@ export class VerificationService {
       throw new BadRequestException(`Email domain ${emailDomain} not allowed for ${company.name}`);
     }
 
-    // Check if user already has a verified membership for this company
     const existingMembership = await this.prisma.companyMembership.findUnique({
       where: { userId_companyId: { userId, companyId: company.id } },
     });
@@ -32,19 +30,16 @@ export class VerificationService {
       throw new BadRequestException('Already verified for this company');
     }
 
-    // Generate 6-digit OTP
     const otp = String(Math.floor(100000 + Math.random() * 900000));
     const otpCodeHash = await bcrypt.hash(otp, 10);
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
-    // Create or update membership as PENDING
-    const membership = await this.prisma.companyMembership.upsert({
+    await this.prisma.companyMembership.upsert({
       where: { userId_companyId: { userId, companyId: company.id } },
       update: { status: 'PENDING' },
       create: { userId, companyId: company.id, status: 'PENDING' },
     });
 
-    // Store verification request
     const request = await this.prisma.verificationRequest.create({
       data: {
         userId,
@@ -57,12 +52,9 @@ export class VerificationService {
       },
     });
 
-    // ponytail: OTP delivery — in production, send via email service.
-    // For dev, return OTP in response.
     return {
       requestId: request.id,
       message: `OTP sent to ${normalizedEmail} (expires in 15 minutes)`,
-      // DEV ONLY — remove in production
       devOtp: otp,
     };
   }
@@ -81,22 +73,24 @@ export class VerificationService {
     const otpValid = await bcrypt.compare(otp, request.otpCodeHash);
     if (!otpValid) throw new BadRequestException('Invalid OTP');
 
-    // Mark request as approved
     await this.prisma.verificationRequest.update({
       where: { id: requestId },
       data: { status: 'APPROVED' },
     });
 
-    // Activate membership
     const membership = await this.prisma.companyMembership.update({
       where: { userId_companyId: { userId, companyId: request.companyId } },
       data: { status: 'VERIFIED', verifiedAt: new Date() },
     });
 
-    // Create anonymous identity
-    const identity = await this.identityService.createIdentity(request.companyId, membership.id);
+    let identity = await this.prisma.anonymousIdentity.findUnique({
+      where: { membershipId: membership.id },
+    });
 
-    // Purge sensitive email from verification request
+    if (!identity) {
+      identity = await this.identityService.createIdentity(request.companyId, membership.id);
+    }
+
     await this.prisma.verificationRequest.update({
       where: { id: requestId },
       data: { targetEmail: null, otpCodeHash: null },
@@ -105,6 +99,67 @@ export class VerificationService {
     return {
       membershipId: membership.id,
       company: { slug: request.company.slug, name: request.company.name },
+      anonymousIdentity: {
+        pseudonym: identity.pseudonym,
+        avatarSeed: identity.avatarSeed,
+      },
+    };
+  }
+
+  async claimSecretCode(userId: string, companySlug: string | undefined, secretCode: string) {
+    const normalizedCode = secretCode.trim().toLowerCase();
+    let company;
+    if (companySlug) {
+      company = await this.prisma.company.findUnique({ where: { slug: companySlug } });
+      if (!company) throw new NotFoundException(`Company ${companySlug} not found`);
+    } else {
+      const companies = await this.prisma.company.findMany();
+      company = companies.find((c) =>
+        (c.secretCodes || []).some((sc) => sc.trim().toLowerCase() === normalizedCode),
+      );
+      if (!company) throw new NotFoundException(`No company found for secret code "${secretCode}"`);
+    }
+
+    const validCode = (company.secretCodes || []).some(
+      (code) => code.trim().toLowerCase() === normalizedCode,
+    );
+    if (!validCode) {
+      throw new BadRequestException('Invalid company secret code');
+    }
+
+    const existingMembership = await this.prisma.companyMembership.findUnique({
+      where: { userId_companyId: { userId, companyId: company.id } },
+      include: { anonymousIdentity: true },
+    });
+
+    if (existingMembership?.status === 'VERIFIED') {
+      return {
+        membershipId: existingMembership.id,
+        company: { slug: company.slug, name: company.name },
+        anonymousIdentity: {
+          pseudonym: existingMembership.anonymousIdentity?.pseudonym,
+          avatarSeed: existingMembership.anonymousIdentity?.avatarSeed,
+        },
+      };
+    }
+
+    const membership = await this.prisma.companyMembership.upsert({
+      where: { userId_companyId: { userId, companyId: company.id } },
+      update: { status: 'VERIFIED', verifiedAt: new Date() },
+      create: { userId, companyId: company.id, status: 'VERIFIED', verifiedAt: new Date() },
+    });
+
+    let identity = await this.prisma.anonymousIdentity.findUnique({
+      where: { membershipId: membership.id },
+    });
+
+    if (!identity) {
+      identity = await this.identityService.createIdentity(company.id, membership.id);
+    }
+
+    return {
+      membershipId: membership.id,
+      company: { slug: company.slug, name: company.name },
       anonymousIdentity: {
         pseudonym: identity.pseudonym,
         avatarSeed: identity.avatarSeed,

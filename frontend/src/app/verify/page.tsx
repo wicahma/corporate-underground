@@ -116,7 +116,8 @@ function VerifyContent() {
     setError(null);
     try {
       const res = await verificationApi.claimCode(inviteCode.trim());
-      const slug = (res as Record<string, unknown>).companySlug as string;
+      const companyData = res.company as { slug?: string } | undefined;
+      const slug = companyData?.slug;
       if (slug) {
         router.push(`/c/${slug}`);
       } else {

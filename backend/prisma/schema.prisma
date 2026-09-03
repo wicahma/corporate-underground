@@ -25,6 +25,7 @@ model Company {
   name           String
   slug           String    @unique
   allowedDomains String[]
+  secretCodes    String[]  @default([])
   logoUrl        String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
