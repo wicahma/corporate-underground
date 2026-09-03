@@ -1,0 +1,244 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String    @id @default(uuid()) @db.Uuid
+  email         String    @unique
+  passwordHash  String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  memberships   CompanyMembership[]
+  verifications VerificationRequest[]
+
+  @@map("users")
+}
+
+model Company {
+  id             String    @id @default(uuid()) @db.Uuid
+  name           String
+  slug           String    @unique
+  allowedDomains String[]
+  logoUrl        String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  memberships    CompanyMembership[]
+  identities     AnonymousIdentity[]
+  posts          Post[]
+  topics         Topic[]
+  checkIns       OfficeTemperatureCheckIn[]
+  verifications  VerificationRequest[]
+
+  @@map("companies")
+}
+
+model CompanyMembership {
+  id            String           @id @default(uuid()) @db.Uuid
+  userId        String           @db.Uuid
+  companyId     String           @db.Uuid
+  status        MembershipStatus @default(PENDING)
+  verifiedAt    DateTime?
+  expiresAt     DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  anonymousIdentity AnonymousIdentity?
+
+  @@unique([userId, companyId])
+  @@map("company_memberships")
+}
+
+enum MembershipStatus {
+  PENDING
+  VERIFIED
+  REVOKED
+  EXPIRED
+}
+
+model AnonymousIdentity {
+  id            String    @id @default(uuid()) @db.Uuid
+  companyId     String    @db.Uuid
+  membershipId  String    @unique @db.Uuid
+  pseudonym     String
+  avatarSeed    String
+  reputation    Int       @default(0)
+  isMuted       Boolean   @default(false)
+  isBanned      Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  membership    CompanyMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  posts         Post[]
+  comments      Comment[]
+  reactions     Reaction[]
+  pollVotes     PollVote[]
+  reportsFiled  Report[]  @relation("Reporter")
+
+  @@unique([companyId, pseudonym])
+  @@map("anonymous_identities")
+}
+
+enum PostType {
+  NORMAL
+  POLL
+  CONFESSION
+  HOT_TAKE
+  AMA
+  TIME_CAPSULE
+}
+
+model Post {
+  id            String    @id @default(uuid()) @db.Uuid
+  companyId     String    @db.Uuid
+  authorId      String    @db.Uuid
+  type          PostType  @default(NORMAL)
+  title         String?
+  content       String
+  metadata      Json?
+  unlocksAt     DateTime?
+  isLocked      Boolean   @default(false)
+  isDeleted     Boolean   @default(false)
+  likeCount     Int       @default(0)
+  commentCount  Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  author        AnonymousIdentity @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments      Comment[]
+  reactions     Reaction[]
+  pollOptions   PollOption[]
+  reports       Report[]
+
+  @@map("posts")
+}
+
+model Comment {
+  id            String    @id @default(uuid()) @db.Uuid
+  postId        String    @db.Uuid
+  authorId      String    @db.Uuid
+  parentId      String?   @db.Uuid
+  content       String
+  isDeleted     Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  post          Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author        AnonymousIdentity @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent        Comment?  @relation("NestedReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies       Comment[] @relation("NestedReplies")
+  reactions     Reaction[]
+  reports       Report[]
+
+  @@map("comments")
+}
+
+model Reaction {
+  id            String    @id @default(uuid()) @db.Uuid
+  authorId      String    @db.Uuid
+  postId        String?   @db.Uuid
+  commentId     String?   @db.Uuid
+  type          String
+  createdAt     DateTime  @default(now())
+
+  author        AnonymousIdentity @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  post          Post?     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment       Comment?  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([authorId, postId, commentId, type])
+  @@map("reactions")
+}
+
+model PollOption {
+  id            String    @id @default(uuid()) @db.Uuid
+  postId        String    @db.Uuid
+  text          String
+  voteCount     Int       @default(0)
+
+  post          Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  votes         PollVote[]
+
+  @@map("poll_options")
+}
+
+model PollVote {
+  id            String    @id @default(uuid()) @db.Uuid
+  optionId      String    @db.Uuid
+  voterId       String    @db.Uuid
+  createdAt     DateTime  @default(now())
+
+  option        PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  voter         AnonymousIdentity @relation(fields: [voterId], references: [id], onDelete: Cascade)
+
+  @@unique([optionId, voterId])
+  @@map("poll_votes")
+}
+
+model Topic {
+  id            String    @id @default(uuid()) @db.Uuid
+  companyId     String    @db.Uuid
+  name          String
+  slug          String
+  postCount     Int       @default(0)
+
+  company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, slug])
+  @@map("topics")
+}
+
+model OfficeTemperatureCheckIn {
+  id            String    @id @default(uuid()) @db.Uuid
+  companyId     String    @db.Uuid
+  mood          String
+  date          DateTime  @default(now()) @db.Date
+
+  company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("office_temperature_checkins")
+}
+
+model VerificationRequest {
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String    @db.Uuid
+  companyId     String    @db.Uuid
+  type          String
+  targetEmail   String?
+  otpCodeHash   String?
+  status        String
+  expiresAt     DateTime
+  createdAt     DateTime  @default(now())
+
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("verification_requests")
+}
+
+model Report {
+  id            String    @id @default(uuid()) @db.Uuid
+  reporterId    String    @db.Uuid
+  postId        String?   @db.Uuid
+  commentId     String?   @db.Uuid
+  reason        String
+  status        String    @default("PENDING")
+  createdAt     DateTime  @default(now())
+
+  reporter      AnonymousIdentity @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  post          Post?     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment       Comment?  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@map("reports")
+}

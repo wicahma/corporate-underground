@@ -1,0 +1,191 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #090a0f;
+  --panel: #0e1016;
+  --panel2: #14161d;
+  --line: #27272a;
+  --fg: #e4e4e7;
+  --dim: #71717a;
+  --danger: #ff453a;
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-panel: var(--panel);
+  --color-panel2: var(--panel2);
+  --color-line: var(--line);
+  --color-fg: var(--fg);
+  --color-dim: var(--dim);
+  --color-danger: var(--danger);
+  --font-mono:
+    "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo,
+    Consolas, "Liberation Mono", monospace;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--ink);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--fg);
+  color: var(--ink);
+}
+
+/* Swiss terminal utilities */
+.label {
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.input {
+  width: 100%;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--fg);
+  outline: none;
+  font-family: inherit;
+  border-radius: 0;
+}
+
+.input:focus {
+  border-color: var(--fg);
+}
+
+.input::placeholder {
+  color: var(--dim);
+}
+
+.select {
+  width: 100%;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--fg);
+  outline: none;
+  font-family: inherit;
+  border-radius: 0;
+  appearance: none;
+}
+
+.select:focus {
+  border-color: var(--fg);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--fg);
+  padding: 9px 16px;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  font-family: inherit;
+  border-radius: 0;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+}
+
+.btn:hover {
+  border-color: var(--fg);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--fg);
+  color: var(--ink);
+  border-color: var(--fg);
+}
+
+.btn-primary:hover {
+  background: #ffffff;
+  border-color: #ffffff;
+}
+
+.btn-danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.btn-danger:hover {
+  border-color: var(--danger);
+  background: var(--danger);
+  color: var(--ink);
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+
+.tag {
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  border: 1px solid var(--line);
+  padding: 2px 6px;
+  color: var(--dim);
+  white-space: nowrap;
+}
+
+.tab {
+  border: 1px solid var(--line);
+  padding: 5px 10px;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--dim);
+  cursor: pointer;
+  background: transparent;
+  font-family: inherit;
+}
+
+.tab:hover {
+  color: var(--fg);
+}
+
+.tab-active {
+  background: var(--fg);
+  color: var(--ink);
+  border-color: var(--fg);
+}
+
+.tab-active:hover {
+  color: var(--ink);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--ink);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+}
