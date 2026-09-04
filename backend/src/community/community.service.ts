@@ -353,13 +353,26 @@ export class CommunityService {
     if (!VALID_MOODS.includes(moodUpper)) {
       throw new BadRequestException(`Invalid mood. Allowed: ${VALID_MOODS.join(', ')}`);
     }
-    await this.prisma.officeTemperatureCheckIn.create({
-      data: { companyId, mood: moodUpper },
+    const today = new Date().toISOString().slice(0, 10);
+    const existing = await this.prisma.officeTemperatureCheckIn.findUnique({
+      where: {
+        identityId_companyId_date: { identityId, companyId, date: new Date(today + 'T00:00:00.000Z') },
+      },
+    });
+    if (existing) {
+      const updated = await this.prisma.officeTemperatureCheckIn.update({
+        where: { id: existing.id },
+        data: { mood: moodUpper },
+      });
+      return { checkIn: moodUpper, anonymous: true, updated: true, id: updated.id };
+    }
+    const created = await this.prisma.officeTemperatureCheckIn.create({
+      data: { companyId, identityId, mood: moodUpper },
     });
     await this.prisma.anonymousIdentity.update({
       where: { id: identityId },
       data: { reputation: { increment: 1 } },
     });
-    return { checkIn: moodUpper, anonymous: true };
+    return { checkIn: moodUpper, anonymous: true, updated: false, id: created.id };
   }
 }

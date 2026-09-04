@@ -158,6 +158,7 @@ export function normCompany(raw: unknown): Company {
       (r.members as number) ??
       (r.memberCount as number) ??
       (r.verified_members as number) ??
+      ((r._count as Record<string, unknown>)?.memberships as number) ??
       0,
   };
 }

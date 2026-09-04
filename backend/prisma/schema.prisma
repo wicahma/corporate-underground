@@ -101,6 +101,7 @@ model AnonymousIdentity {
   reactions     Reaction[]
   pollVotes     PollVote[]
   reportsFiled  Report[]  @relation("Reporter")
+  temperatureCheckIns OfficeTemperatureCheckIn[]
 
   @@unique([companyId, pseudonym])
   @@map("anonymous_identities")
@@ -218,11 +219,14 @@ model Topic {
 model OfficeTemperatureCheckIn {
   id            String    @id @default(uuid()) @db.Uuid
   companyId     String    @db.Uuid
+  identityId    String    @db.Uuid
   mood          String
   date          DateTime  @default(now()) @db.Date
 
   company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  identity      AnonymousIdentity @relation(fields: [identityId], references: [id], onDelete: Cascade)
 
+  @@unique([identityId, companyId, date])
   @@map("office_temperature_checkins")
 }
 

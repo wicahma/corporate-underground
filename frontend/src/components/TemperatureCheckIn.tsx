@@ -39,29 +39,27 @@ export function TemperatureCheckIn({
         <span className="label">Temperature Check-In</span>
       </div>
 
-      {mood ? (
-        <div className="text-xs text-fg py-2">
-          CHECKED IN: {MOODS.find((m) => m.key === mood)?.label ?? mood}
+      {mood && (
+        <div className="text-xs text-fg py-2 mb-3">
+          CHECKED IN: {MOODS.find((m) => m.key === mood)?.label ?? mood} —
+          tap again to change
         </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {MOODS.map((m) => (
-              <button
-                key={m.key}
-                onClick={() => void checkin(m.key)}
-                className="btn h-16 flex flex-col text-center gap-1 hover:border-fg"
-              >
-                <span className="font-mono text-[10px]">{m.tick}</span>
-                <span className="text-[10px] tracking-wider uppercase">
-                  {m.label}
-                </span>
-              </button>
-            ))}
-          </div>
-          {error && <p className="mt-3 text-[10px] text-danger">{error}</p>}
-        </>
       )}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {MOODS.map((m) => (
+          <button
+            key={m.key}
+            onClick={() => void checkin(m.key)}
+            className={`btn h-16 flex flex-col text-center gap-1 hover:border-fg ${mood === m.key ? "border-fg" : ""}`}
+          >
+            <span className="font-mono text-[10px]">{m.tick}</span>
+            <span className="text-[10px] tracking-wider uppercase">
+              {m.label}
+            </span>
+          </button>
+        ))}
+      </div>
+      {error && <p className="mt-3 text-[10px] text-danger">{error}</p>}
     </div>
   );
 }
