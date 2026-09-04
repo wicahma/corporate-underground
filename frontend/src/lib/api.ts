@@ -268,11 +268,6 @@ export function normFeed(raw: unknown): FeedResponse {
 // Flatten any nesting then rebuild tree from parentId links.
 export function buildCommentTree(rawList: unknown[]): Comment[] {
   const flat = rawList.map(normComment);
-  if (flat.some((c) => c.replies.length > 0)) {
-    const flatten = (list: Comment[]): Comment[] =>
-      list.flatMap((c) => [c, ...flatten(c.replies)]);
-    return buildCommentTree(flatten(flat));
-  }
   const map = new Map<string, Comment>();
   for (const c of flat) map.set(c.id, { ...c, replies: [] });
   const roots: Comment[] = [];
