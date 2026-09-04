@@ -266,16 +266,9 @@ export function normFeed(raw: unknown): FeedResponse {
 }
 
 // Flatten any nesting then rebuild tree from parentId links.
+// Normalize comment tree from backend (already built as tree structure)
 export function buildCommentTree(rawList: unknown[]): Comment[] {
-  const flat = rawList.map(normComment);
-  const map = new Map<string, Comment>();
-  for (const c of flat) map.set(c.id, { ...c, replies: [] });
-  const roots: Comment[] = [];
-  for (const c of map.values()) {
-    if (c.parentId && map.has(c.parentId)) map.get(c.parentId)!.replies.push(c);
-    else roots.push(c);
-  }
-  return roots;
+  return rawList.map(normComment);
 }
 
 export function fmtDate(iso: string): string {
