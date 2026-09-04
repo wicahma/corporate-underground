@@ -98,7 +98,7 @@ export function Header({
           {user ? (
             <button
               onClick={() => setConfirmOpen(true)}
-              title={`Logged in as ${user.email}`}
+              title={`Logged in as ${user.id}`}
               className="btn text-[10px] py-1 px-2.5 h-8 flex items-center gap-1.5 text-dim hover:text-fg"
             >
               <LogOut className="w-3 h-3" />

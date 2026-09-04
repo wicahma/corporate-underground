@@ -133,7 +133,6 @@ export interface Pulse {
 
 export interface UserMe {
   id: string;
-  email: string;
   photoUrl?: string | null;
   memberships: { company: Company; status: string }[];
 }
@@ -219,7 +218,6 @@ export function normUser(raw: unknown): UserMe {
     : [];
   return {
     id: (r.id as string) ?? "",
-    email: (r.email as string) ?? "",
     photoUrl: (r.photoUrl as string) ?? null,
     memberships: ms,
   };

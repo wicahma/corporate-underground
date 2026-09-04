@@ -310,7 +310,7 @@ function VerifyContent() {
             <div>
               <div className="label mb-3">STEP 03 — ENTER 6-DIGIT OTP</div>
               <p className="text-[11px] text-dim font-mono mb-4">
-                A code was sent to {workEmail}. It expires in 15 minutes.
+                Verification code sent. It expires in 15 minutes.
               </p>
               <input
                 value={otp}

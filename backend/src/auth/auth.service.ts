@@ -22,8 +22,8 @@ export class AuthService {
     return `session:${userId}`;
   }
 
-  private formatUser(user: { id: string; email: string; createdAt: Date }) {
-    return { id: user.id, email: user.email, createdAt: user.createdAt };
+  private formatUser(user: { id: string; createdAt: Date }) {
+    return { id: user.id, createdAt: user.createdAt };
   }
 
   async register(email: string, password: string) {
@@ -33,8 +33,8 @@ export class AuthService {
     if (existing) throw new ConflictException('Email already registered');
     const passwordHash = await bcrypt.hash(password, 10);
     const user = await this.prisma.user.create({
-      data: { email: normalized, emailHash, passwordHash },
-      select: { id: true, email: true, createdAt: true },
+      data: { emailHash, passwordHash },
+      select: { id: true, createdAt: true },
     });
     const sessionId = this.issueToken(user.id);
     await this.redis.set(this.sessionKey(user.id), sessionId, SESSION_TTL_SECONDS);
@@ -75,7 +75,7 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
-        id: true, email: true, photoUrl: true, createdAt: true,
+        id: true, photoUrl: true, createdAt: true,
         memberships: {
           select: {
             id: true,

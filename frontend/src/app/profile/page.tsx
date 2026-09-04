@@ -51,7 +51,6 @@ interface SelfMembership {
 
 interface SelfProfile {
   id: string;
-  email: string;
   photoUrl?: string | null;
   createdAt: string;
   memberships: SelfMembership[];
@@ -219,7 +218,7 @@ function ProfileContent() {
                 className="w-full h-full object-cover"
               />
             ) : (
-              <Identicon seed={profile?.email || "anon"} size={48} />
+              <Identicon seed={profile?.id || "anon"} size={48} />
             )}
             <button
               onClick={() => fileInputRef.current?.click()}
@@ -236,7 +235,7 @@ function ProfileContent() {
               Account & Pseudonyms
             </h1>
             <p className="text-[11px] text-dim font-mono mt-1">
-              {profile?.email} · SEALED REAL IDENTITY
+              SEALED REAL IDENTITY
             </p>
           </div>
         </div>
