@@ -84,7 +84,7 @@ export default function PublicProfilePage({
       setError(null);
       try {
         const data = await api<PublicProfile>(
-          `/users/${encodeURIComponent(pseudonymId)}/profile`,
+          `/users/${pseudonymId}/profile`,
         );
         setProfile(data);
         // Show full history by default when posts exist

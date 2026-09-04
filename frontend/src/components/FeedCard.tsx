@@ -46,7 +46,7 @@ export function FeedCard({
       <header className="flex items-center justify-between gap-3 text-xs mb-3 pb-3 border-b border-line">
         <div className="flex items-center gap-2.5">
           <Link
-            href={`/u/${encodeURIComponent(post.author.pseudonym)}`}
+            href={`/u/${post.author.pseudonym}`}
             className="flex items-center gap-2.5 hover:opacity-80"
           >
             <Identicon seed={post.author.avatarSeed || post.author.pseudonym} />
