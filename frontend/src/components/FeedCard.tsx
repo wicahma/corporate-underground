@@ -48,7 +48,7 @@ export function FeedCard({
   const [showRepostModal, setShowRepostModal] = useState(false);
   const tag = TYPE_TAG[post.type] ?? TYPE_TAG.NORMAL;
 
-  const isVerified = (post.metadata as Record<string, unknown> | null)?.verifiedEmployee ?? true;
+  const isVerified = (post.metadata as Record<string, unknown> | null)?.verifiedEmployee === true;
 
   const handleLike = async (e: React.MouseEvent) => {
     e.preventDefault();

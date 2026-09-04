@@ -7,12 +7,15 @@ import { authApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Shell } from "@/components/Shell";
 import { KeyRound, AlertCircle, ShieldAlert } from "lucide-react";
+import { RedirectIfAuthenticated } from "@/components/RedirectIfAuthenticated";
 
 export default function LoginPage() {
   return (
     <Shell>
       <Suspense fallback={<div className="max-w-sm mx-auto px-4 pt-24 pb-20"><div className="card p-8 border-line animate-pulse"><div className="h-4 bg-panel2 w-1/3 mb-2" /><div className="h-3 bg-panel2 w-2/3" /></div></div>}>
-        <LoginForm />
+        <RedirectIfAuthenticated>
+          <LoginForm />
+        </RedirectIfAuthenticated>
       </Suspense>
     </Shell>
   );
@@ -92,7 +95,15 @@ function LoginForm() {
             </div>
 
             <div>
-              <label className="label block mb-1.5">PASSWORD</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="label">PASSWORD</label>
+                <Link
+                  href="/forgot-password"
+                  className="text-[10px] text-neutral-400 hover:text-white transition-colors"
+                >
+                  Lupa password?
+                </Link>
+              </div>
               <input
                 type="password"
                 required

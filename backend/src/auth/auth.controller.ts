@@ -25,6 +25,25 @@ export class LoginDto {
   password!: string;
 }
 
+export class RequestResetDto {
+  @IsEmail()
+  email!: string;
+}
+
+export class ValidateResetTokenDto {
+  @IsString()
+  token!: string;
+}
+
+export class ResetPasswordDto {
+  @IsString()
+  token!: string;
+
+  @IsString()
+  @MinLength(8)
+  newPassword!: string;
+}
+
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
@@ -49,6 +68,21 @@ export class AuthController {
     const result = await this.authService.login(dto.email, dto.password);
     res.cookie('accessToken', result.accessToken, COOKIE_OPTIONS);
     return result;
+  }
+
+  @Post('request-reset')
+  requestReset(@Body() dto: RequestResetDto) {
+    return this.authService.requestPasswordReset(dto.email);
+  }
+
+  @Post('validate-reset-token')
+  validateResetToken(@Body() dto: ValidateResetTokenDto) {
+    return this.authService.validateResetToken(dto.token);
+  }
+
+  @Post('reset-password')
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto.token, dto.newPassword);
   }
 
   @UseGuards(JwtAuthGuard, SessionTimeoutGuard)

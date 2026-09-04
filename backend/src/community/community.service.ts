@@ -207,6 +207,12 @@ export class CommunityService {
       }
     }
 
+    const identity = await this.prisma.anonymousIdentity.findUnique({
+      where: { id: authorId },
+      include: { membership: { select: { status: true } } },
+    });
+    const isVerified = identity?.membership?.status === 'VERIFIED';
+
     const post = await this.prisma.post.create({
       data: {
         companyId,
@@ -215,12 +221,21 @@ export class CommunityService {
         title: dto.title,
         content: dto.content,
         unlocksAt: dto.unlockAt ? new Date(dto.unlockAt) : undefined,
+        metadata: { verifiedEmployee: isVerified },
         pollOptions: isPoll
           ? { create: dto.pollOptions!.map((text) => ({ text })) }
           : undefined,
       },
       include: {
-        author: { select: { id: true, pseudonym: true, avatarSeed: true, reputation: true } },
+        author: {
+          select: {
+            id: true,
+            pseudonym: true,
+            avatarSeed: true,
+            reputation: true,
+            membership: { select: { status: true } },
+          },
+        },
         pollOptions: true,
       },
     });
@@ -278,6 +293,12 @@ export class CommunityService {
       }
     }
 
+    const identity = await this.prisma.anonymousIdentity.findUnique({
+      where: { id: authorId },
+      include: { membership: { select: { status: true } } },
+    });
+    const isVerified = identity?.membership?.status === 'VERIFIED';
+
     const comment = await this.prisma.comment.create({
       data: {
         postId,
@@ -286,7 +307,15 @@ export class CommunityService {
         content: dto.content,
       },
       include: {
-        author: { select: { id: true, pseudonym: true, avatarSeed: true, reputation: true } },
+        author: {
+          select: {
+            id: true,
+            pseudonym: true,
+            avatarSeed: true,
+            reputation: true,
+            membership: { select: { status: true } },
+          },
+        },
       },
     });
 
@@ -300,7 +329,7 @@ export class CommunityService {
       data: { reputation: { increment: 1 } },
     });
 
-    return comment;
+    return { ...comment, replies: [], metadata: { verifiedEmployee: isVerified } };
   }
 
   async addReaction(authorId: string, postId: string, type: string, commentId?: string) {

@@ -125,18 +125,42 @@ export default function PostDetailPage({
       );
       setNewComment("");
       setReplyTo(null);
+      // Normalize: ensure replies array exists to avoid render crash
+      const normalized: Comment = { ...created, replies: [] };
       setComments((prev) => {
         if (parentId) {
           const insert = (list: Comment[]): Comment[] =>
             list.map((c) =>
               c.id === parentId
-                ? { ...c, replies: [...c.replies, created] }
+                ? { ...c, replies: [...c.replies, normalized] }
                 : { ...c, replies: insert(c.replies) },
             );
           return insert(prev);
         }
-        return [...prev, created];
+        return [...prev, normalized];
       });
+      // Refetch full thread so client/server commentCount, tree, and
+      // verified badges stay in sync (no refresh needed).
+      try {
+        const rawPost = await communityApi.post(companySlug, id);
+        const rawComments = Array.isArray(rawPost.comments)
+          ? rawPost.comments
+          : [];
+        setComments(buildCommentTree(rawComments));
+        setPost((prev) =>
+          prev
+            ? {
+                ...prev,
+                commentCount: (rawPost.commentCount as number) ?? prev.commentCount,
+                metadata:
+                  ((rawPost.metadata as Record<string, unknown>) ?? null) ??
+                  prev.metadata,
+              }
+            : prev,
+        );
+      } catch {
+        // Optimistic state already applied; silent fallback
+      }
     } catch {
       /* no-op */
     } finally {
@@ -161,8 +185,13 @@ export default function PostDetailPage({
             <span className="font-semibold text-[15px] text-[#f3f5f7]">
               {c.author.pseudonym}
             </span>
-            {isVerified && (
+            {isVerified ? (
               <BadgeCheck className="w-3.5 h-3.5 text-[#0095f6] shrink-0" />
+            ) : (
+              <span className="tag text-[9px] border-amber-500/40 text-amber-300 bg-amber-500/10 flex items-center gap-1 font-medium px-1.5 py-0.2 rounded-full">
+                <ShieldAlert className="w-2.5 h-2.5 text-amber-400" />
+                Unverified
+              </span>
             )}
             <time className="text-[13px] text-[#777777]">
               {`• ${relativeTime(c.createdAt)}`}

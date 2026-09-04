@@ -306,6 +306,21 @@ export const authApi = {
       method: "POST",
       body: JSON.stringify({ oldPassword, newPassword }),
     }),
+  requestReset: (email: string) =>
+    api<void>("/auth/request-reset", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+  validateResetToken: (token: string) =>
+    api<void>("/auth/validate-reset-token", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    }),
+  resetPassword: (token: string, newPassword: string) =>
+    api<void>("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token, newPassword }),
+    }),
 };
 
 export const companiesApi = {

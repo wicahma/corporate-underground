@@ -7,8 +7,17 @@ import { authApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Shell } from "@/components/Shell";
 import { Fingerprint, AlertCircle } from "lucide-react";
+import { RedirectIfAuthenticated } from "@/components/RedirectIfAuthenticated";
 
 export default function RegisterPage() {
+  return (
+    <RedirectIfAuthenticated>
+      <RegisterForm />
+    </RedirectIfAuthenticated>
+  );
+}
+
+function RegisterForm() {
   const router = useRouter();
   const { refresh } = useAuth();
   const [email, setEmail] = useState("");

@@ -20,7 +20,6 @@ export class EmailService {
         auth: { user, pass },
       });
     } else {
-      // ponytail: dev fallback logs to console; add Ethereal for real testing
       this.transporter = nodemailer.createTransport({
         jsonTransport: true,
       });
@@ -40,9 +39,38 @@ export class EmailService {
     `;
 
     await this.transporter.sendMail({
-      from: this.config.get<string>('SMTP_FROM') || 'noreply@corporate-underground.local',
+      from: this.config.get<string>('SMTP_FROM') || 'noreply@underground.diama.dev',
       to,
       subject: `${companyName} — Your Verification Code`,
+      html,
+    });
+  }
+
+  async sendPasswordReset(to: string, resetLink: string) {
+    const html = `
+      <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; color: #111;">
+        <h2>Corporate Underground — Reset Password</h2>
+        <p>Kami menerima permintaan untuk mereset kata sandi akunmu.</p>
+        <p>Klik tombol atau tautan di bawah ini untuk mengatur kata sandi baru (berlaku selama 1 jam):</p>
+        <div style="text-align: center; margin: 24px 0;">
+          <a href="${resetLink}" style="background: #000; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; display: inline-block;">
+            Reset Password
+          </a>
+        </div>
+        <p style="color: #666; font-size: 13px; word-break: break-all;">
+          Atau salin tautan berikut ke browsermu:<br/>
+          <a href="${resetLink}">${resetLink}</a>
+        </p>
+        <p style="color: #999; font-size: 12px; margin-top: 24px;">
+          Jika kamu tidak meminta reset password, abaikan email ini dengan aman.
+        </p>
+      </div>
+    `;
+
+    await this.transporter.sendMail({
+      from: this.config.get<string>('SMTP_FROM') || 'noreply@underground.diama.dev',
+      to,
+      subject: `Corporate Underground — Link Reset Password`,
       html,
     });
   }
