@@ -17,12 +17,25 @@ import { Identicon } from "@/components/Identicon";
 import { PollWidget } from "@/components/PollWidget";
 import {
   ArrowLeft,
+  Heart,
   MessageSquare,
-  ThumbsUp,
-  Send,
+  Repeat2,
+  Share2,
+  BadgeCheck,
+  ShieldAlert,
   AlertCircle,
-  Flame,
 } from "lucide-react";
+
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.max(1, Math.floor(diff / 60000));
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d`;
+  return fmtDate(iso);
+}
 
 export default function PostDetailPage({
   params,
@@ -131,45 +144,63 @@ export default function PostDetailPage({
     }
   };
 
-  const renderComment = (c: Comment, depth = 0) => (
-    <div key={c.id} className={`mb-4 ${depth > 0 ? "ml-6 border-l border-line pl-4" : ""}`}>
-      <div className="flex items-start gap-3">
-        <Identicon seed={c.author.avatarSeed || c.author.pseudonym} size={24} />
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-[11px] font-semibold text-fg tracking-wider">
+  const renderComment = (c: Comment, depth = 0) => {
+    const isVerified = (c as unknown as { metadata?: { verifiedEmployee?: boolean } })
+      ?.metadata?.verifiedEmployee ?? true;
+    return (
+      <div key={c.id} className="flex mb-4">
+        {/* Left column: avatar + thread line */}
+        <div className="w-10 flex flex-col items-center shrink-0">
+          <Identicon seed={c.author.avatarSeed || c.author.pseudonym} size={28} />
+          <div className="w-[2px] flex-1 bg-[#262626] my-2 rounded-full min-h-[20px]" />
+        </div>
+
+        {/* Right column */}
+        <div className="flex-1 min-w-0 pl-3">
+          <div className="flex items-center gap-1.5 text-sm mb-1 flex-wrap">
+            <span className="font-semibold text-[15px] text-[#f3f5f7]">
               {c.author.pseudonym}
             </span>
-            <time className="text-[9px] text-dim font-mono">
-              {fmtDate(c.createdAt)}
+            {isVerified && (
+              <BadgeCheck className="w-3.5 h-3.5 text-[#0095f6] shrink-0" />
+            )}
+            <time className="text-[13px] text-[#777777]">
+              {`• ${relativeTime(c.createdAt)}`}
             </time>
           </div>
-          <p className="text-xs text-fg/90 font-mono font-light leading-relaxed whitespace-pre-wrap mb-2">
+          <p className="text-[15px] leading-relaxed text-[#f3f5f7] whitespace-pre-wrap font-normal mb-2">
             {c.content}
           </p>
           <button
             onClick={() => setReplyTo(c.id)}
-            className="text-[10px] text-dim hover:text-fg uppercase tracking-widest"
+            className="text-[13px] text-[#777777] hover:text-[#f3f5f7] transition-colors flex items-center gap-1"
           >
-            REPLY →
+            <MessageSquare className="w-3.5 h-3.5" />
+            Reply
           </button>
+
+          {c.replies.length > 0 && (
+            <div className="mt-3 space-y-0">
+              {c.replies.map((r) => renderComment(r, depth + 1))}
+            </div>
+          )}
         </div>
       </div>
-      {c.replies.length > 0 && (
-        <div className="mt-3">{c.replies.map((r) => renderComment(r, depth + 1))}</div>
-      )}
-    </div>
-  );
+    );
+  };
 
   if (loading) {
     return (
-      <div className="flex min-h-screen flex-col">
+      <div className="flex min-h-screen flex-col bg-[#101010]">
         <Header companySlug={companySlug} />
-        <main className="flex-1 max-w-3xl w-full mx-auto px-4 py-8">
-          <div className="card p-8 border-line animate-pulse space-y-4">
-            <div className="h-5 bg-panel2 w-1/3" />
-            <div className="h-3 bg-panel2 w-full" />
-            <div className="h-3 bg-panel2 w-2/3" />
+        <main className="flex-1 max-w-[640px] w-full mx-auto px-4 py-8">
+          <div className="card p-6 border-line animate-pulse space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-panel2" />
+              <div className="h-4 bg-panel2 w-1/3 rounded-full" />
+            </div>
+            <div className="h-3 bg-panel2 w-full rounded-full" />
+            <div className="h-3 bg-panel2 w-2/3 rounded-full" />
           </div>
         </main>
         <Footer />
@@ -179,15 +210,15 @@ export default function PostDetailPage({
 
   if (error || !post) {
     return (
-      <div className="flex min-h-screen flex-col">
+      <div className="flex min-h-screen flex-col bg-[#101010]">
         <Header companySlug={companySlug} companyName={company?.name} />
-        <main className="flex-1 max-w-3xl w-full mx-auto px-4 py-8">
-          <div className="card p-8 border-danger/40 bg-danger/5">
-            <div className="flex items-center gap-3 text-danger text-xs mb-2">
+        <main className="flex-1 max-w-[640px] w-full mx-auto px-4 py-8">
+          <div className="card p-6 border-danger/40 bg-danger/5">
+            <div className="flex items-center gap-2 text-danger text-sm mb-1 font-semibold">
               <AlertCircle className="w-4 h-4" />
-              <span className="font-semibold">Thread unavailable</span>
+              <span>Thread unavailable</span>
             </div>
-            <p className="text-[11px] text-dim font-mono">{error}</p>
+            <p className="text-xs text-dim">{error}</p>
           </div>
         </main>
         <Footer />
@@ -195,118 +226,134 @@ export default function PostDetailPage({
     );
   }
 
+  const isVerified = (post.metadata as Record<string, unknown> | null)?.verifiedEmployee ?? true;
+  const actionBtn =
+    "flex items-center gap-1.5 text-[#777777] hover:text-[#f3f5f7] p-2 -m-1 rounded-full transition-colors";
+
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col bg-[#101010]">
       <Header companySlug={companySlug} companyName={company?.name} />
 
-      <main className="flex-1 max-w-3xl w-full mx-auto px-4 py-8">
+      <main className="flex-1 max-w-[640px] w-full mx-auto px-4 py-6">
         <Link
           href={`/c/${companySlug}`}
-          className="text-[10px] text-dim hover:text-fg uppercase tracking-widest flex items-center gap-1.5 mb-6"
+          className="text-xs text-[#777777] hover:text-[#f3f5f7] flex items-center gap-1.5 mb-4 transition-colors"
         >
-          <ArrowLeft className="w-3 h-3" />
-          Back to Feed
+          <ArrowLeft className="w-4 h-4" />
+          Back to feed
         </Link>
 
-        {/* Post */}
-        <article className="card p-6 border-line mb-8">
-          <header className="flex items-center justify-between gap-3 text-xs mb-4 pb-4 border-b border-line">
-            <div className="flex items-center gap-2.5">
+        {/* Post with thread line */}
+        <article className="mb-6">
+          <div className="flex">
+            {/* Left column: avatar + thread line */}
+            <div className="w-10 flex flex-col items-center shrink-0">
               <Identicon seed={post.author.avatarSeed || post.author.pseudonym} />
-              <div className="flex flex-col">
-                <span className="font-semibold text-fg text-xs tracking-wider">
+              <div className="w-[2px] flex-1 bg-[#262626] my-2 rounded-full min-h-[20px]" />
+            </div>
+
+            {/* Right column */}
+            <div className="flex-1 min-w-0 pl-3">
+              <header className="flex items-center gap-1.5 text-sm mb-1 flex-wrap">
+                <span className="font-semibold text-[15px] text-[#f3f5f7]">
                   {post.author.pseudonym}
                 </span>
-                <span className="text-[10px] text-dim font-mono">
-                  REP {post.author.reputation}
-                </span>
-              </div>
-            </div>
-            <time className="text-[10px] text-dim font-mono">
-              {fmtDate(post.createdAt)}
-            </time>
-          </header>
+                {isVerified ? (
+                  <BadgeCheck className="w-4 h-4 text-[#0095f6] shrink-0" />
+                ) : (
+                  <span className="tag text-[10px] border-rose-500/40 text-rose-400 bg-rose-500/10 flex items-center gap-1">
+                    <ShieldAlert className="w-2.5 h-2.5" />
+                    Not an Employee
+                  </span>
+                )}
+                <time className="text-[13px] text-[#777777]">
+                  {`• ${relativeTime(post.createdAt)}`}
+                </time>
+              </header>
 
-          {post.title && (
-            <h1 className="text-lg font-bold text-fg tracking-wide mb-3">
-              {post.title}
-            </h1>
-          )}
-
-          <p className="text-xs text-fg/90 whitespace-pre-wrap leading-relaxed font-mono font-light mb-4">
-            {post.content}
-          </p>
-
-          {post.type === "POLL" && post.pollOptions && (
-            <div className="my-4">
-              <PollWidget
-                companySlug={companySlug}
-                postId={post.id}
-                options={post.pollOptions}
-              />
-            </div>
-          )}
-
-          <footer className="flex items-center gap-4 text-xs pt-4 border-t border-line text-dim">
-            <button className="flex items-center gap-1.5 text-xs hover:text-fg transition-colors">
-              {post.type === "HOT_TAKE" ? (
-                <Flame className="w-3.5 h-3.5" />
-              ) : (
-                <ThumbsUp className="w-3.5 h-3.5" />
+              {post.title && (
+                <h1 className="text-[17px] font-bold text-[#f3f5f7] mb-2">
+                  {post.title}
+                </h1>
               )}
-              <span className="font-mono text-[11px]">{post.likeCount}</span>
-            </button>
-            <div className="flex items-center gap-1.5">
-              <MessageSquare className="w-3.5 h-3.5" />
-              <span className="font-mono text-[11px]">{post.commentCount}</span>
-              <span className="text-[10px]">REPLIES</span>
+
+              <p className="text-[15px] leading-relaxed text-[#f3f5f7] whitespace-pre-wrap font-normal mb-3">
+                {post.content}
+              </p>
+
+              {post.type === "POLL" && post.pollOptions && (
+                <div className="my-3 max-w-md">
+                  <PollWidget
+                    companySlug={companySlug}
+                    postId={post.id}
+                    options={post.pollOptions}
+                  />
+                </div>
+              )}
+
+              <footer className="flex items-center gap-1 text-sm pt-1 -ml-1 border-b border-[#262626] pb-4 mb-4">
+                <button className={actionBtn} aria-label="Like">
+                  <Heart className="w-[18px] h-[18px]" />
+                  <span className="text-[13px] font-medium text-[#777777]">
+                    {post.likeCount}
+                  </span>
+                </button>
+                <div className={actionBtn} aria-label="Comments">
+                  <MessageSquare className="w-[18px] h-[18px]" />
+                  <span className="text-[13px] font-medium text-[#777777]">
+                    {post.commentCount}
+                  </span>
+                </div>
+                <button className={actionBtn} aria-label="Repost">
+                  <Repeat2 className="w-[18px] h-[18px]" />
+                </button>
+                <button className={actionBtn} aria-label="Share">
+                  <Share2 className="w-[18px] h-[18px]" />
+                </button>
+              </footer>
             </div>
-          </footer>
+          </div>
         </article>
 
-        {/* Comments */}
-        <div className="card p-6 border-line">
-          <div className="label mb-4">DISCUSSION THREAD</div>
-
-          {/* Comment Form */}
-          <div className="mb-6 pb-6 border-b border-line">
-            {replyTo && (
-              <div className="mb-2 text-[10px] text-dim flex items-center gap-2">
-                <span>Replying to #{replyTo.slice(0, 8)}</span>
-                <button
-                  onClick={() => setReplyTo(null)}
-                  className="text-danger hover:underline"
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
-            <textarea
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Add your anonymous reply..."
-              rows={3}
-              className="input resize-y text-xs font-mono font-light leading-relaxed mb-3"
-            />
+        {/* Reply input */}
+        <div className="card p-4 border-line mb-6">
+          {replyTo && (
+            <div className="mb-2 text-xs text-[#777777] flex items-center gap-2">
+              <span>Replying to thread</span>
+              <button
+                onClick={() => setReplyTo(null)}
+                className="text-danger hover:underline"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+          <textarea
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            placeholder="Post your reply..."
+            rows={3}
+            className="w-full bg-transparent resize-none text-[15px] leading-relaxed text-[#f3f5f7] placeholder:text-[#777777] outline-none mb-3"
+          />
+          <div className="flex justify-end">
             <button
               onClick={() => void submitComment(replyTo ?? undefined)}
               disabled={submitting || !newComment.trim()}
-              className="btn btn-primary text-xs flex items-center gap-2"
+              className="rounded-full bg-white text-black font-semibold text-xs px-4 py-2 hover:bg-white/90 disabled:opacity-40 transition-colors"
             >
-              <Send className="w-3 h-3" />
-              {submitting ? "POSTING..." : "POST REPLY"}
+              {submitting ? "Posting..." : "Reply"}
             </button>
           </div>
+        </div>
 
-          {/* Comment List */}
-          <div className="space-y-4">
-            {comments.length === 0 && (
-              <p className="text-[11px] text-dim font-mono text-center py-8">
-                No replies yet. Start the conversation.
-              </p>
-            )}
-            {comments.map((c) => renderComment(c))}
-          </div>
+        {/* Comments with thread lines */}
+        <div>
+          {comments.length === 0 && (
+            <p className="text-sm text-[#777777] text-center py-8">
+              No replies yet. Start the conversation.
+            </p>
+          )}
+          {comments.map((c) => renderComment(c))}
         </div>
       </main>
 

@@ -5,10 +5,10 @@ import { communityApi } from "@/lib/api";
 import { Thermometer } from "lucide-react";
 
 const MOODS = [
-  { key: "GREAT", label: "GREAT", tick: "++" },
-  { key: "SURVIVING", label: "SURVIVING", tick: "0" },
-  { key: "CHAOS", label: "CHAOS", tick: "--" },
-  { key: "MEETING_AGAIN", label: "MEETING AGAIN", tick: "x" },
+  { key: "GREAT", label: "Great", tick: "++" },
+  { key: "SURVIVING", label: "Surviving", tick: "0" },
+  { key: "CHAOS", label: "Chaos", tick: "--" },
+  { key: "MEETING_AGAIN", label: "Meeting Again", tick: "x" },
 ];
 
 export function TemperatureCheckIn({
@@ -40,9 +40,9 @@ export function TemperatureCheckIn({
       </div>
 
       {mood && (
-        <div className="text-xs text-fg py-2 mb-3">
-          CHECKED IN: {MOODS.find((m) => m.key === mood)?.label ?? mood} —
-          tap again to change
+        <div className="text-xs text-fg py-2 mb-3 bg-panel2 rounded-xl px-3 border border-line">
+          Checked in: {MOODS.find((m) => m.key === mood)?.label ?? mood} — tap
+          again to change
         </div>
       )}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -50,16 +50,20 @@ export function TemperatureCheckIn({
           <button
             key={m.key}
             onClick={() => void checkin(m.key)}
-            className={`btn h-16 flex flex-col text-center gap-1 hover:border-fg ${mood === m.key ? "border-fg" : ""}`}
+            className={`rounded-xl h-16 flex flex-col text-center gap-1 transition-all border ${
+              mood === m.key
+                ? "border-fg bg-fg/10 text-fg"
+                : "border-line bg-panel hover:border-fg/40 hover:bg-white/5"
+            }`}
           >
-            <span className="font-mono text-[10px]">{m.tick}</span>
-            <span className="text-[10px] tracking-wider uppercase">
+            <span className="font-mono text-[10px] text-dim">{m.tick}</span>
+            <span className="text-[10px] tracking-wider uppercase font-semibold">
               {m.label}
             </span>
           </button>
         ))}
       </div>
-      {error && <p className="mt-3 text-[10px] text-danger">{error}</p>}
+      {error && <p className="mt-3 text-xs text-danger">{error}</p>}
     </div>
   );
 }

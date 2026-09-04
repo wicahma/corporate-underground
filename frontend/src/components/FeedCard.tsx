@@ -5,16 +5,34 @@ import Link from "next/link";
 import { type Post, communityApi, fmtDate } from "@/lib/api";
 import { Identicon } from "./Identicon";
 import { PollWidget } from "./PollWidget";
-import { MessageSquare, ThumbsUp, Flame, AlertTriangle } from "lucide-react";
+import {
+  Heart,
+  MessageSquare,
+  Repeat2,
+  Share2,
+  BadgeCheck,
+  ShieldAlert,
+} from "lucide-react";
 
 const TYPE_TAG: Record<string, { label: string; tone: string }> = {
-  NORMAL: { label: "NOTE", tone: "text-dim border-line" },
-  HOT_TAKE: { label: "HOT TAKE", tone: "text-amber-300 border-amber-500/40" },
-  CONFESSION: { label: "CONFESSION", tone: "text-rose-300 border-rose-500/40" },
-  POLL: { label: "POLL", tone: "text-sky-300 border-sky-500/40" },
+  NORMAL: { label: "Note", tone: "text-dim border-line" },
+  HOT_TAKE: { label: "Hot Take", tone: "text-amber-300 border-amber-500/40" },
+  CONFESSION: { label: "Confession", tone: "text-rose-300 border-rose-500/40" },
+  POLL: { label: "Poll", tone: "text-sky-300 border-sky-500/40" },
   AMA: { label: "AMA", tone: "text-emerald-300 border-emerald-500/40" },
-  TIME_CAPSULE: { label: "CAPSULE", tone: "text-purple-300 border-purple-500/40" },
+  TIME_CAPSULE: { label: "Capsule", tone: "text-purple-300 border-purple-500/40" },
 };
+
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.max(1, Math.floor(diff / 60000));
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d`;
+  return fmtDate(iso);
+}
 
 export function FeedCard({
   post,
@@ -41,102 +59,119 @@ export function FeedCard({
     }
   };
 
+  const actionBtn =
+    "flex items-center gap-1.5 text-dim hover:text-fg p-2 -m-1 rounded-full transition-colors";
+
   return (
-    <article className="card p-5 hover:border-fg/40 transition-colors">
-      <header className="flex items-center justify-between gap-3 text-xs mb-3 pb-3 border-b border-line">
-        <div className="flex items-center gap-2.5">
+    <article className="card p-4 hover:border-fg/40 transition-colors">
+      <div className="flex">
+        {/* Left column: avatar + thread line */}
+        <div className="w-10 flex flex-col items-center shrink-0">
           <Link
             href={`/u/${post.author.pseudonym}`}
-            className="flex items-center gap-2.5 hover:opacity-80"
+            className="hover:opacity-80 transition-opacity"
           >
             <Identicon seed={post.author.avatarSeed || post.author.pseudonym} />
-            <div className="flex flex-col">
-              <div className="flex items-center gap-1.5">
-                <span className="font-semibold text-fg text-xs tracking-wider">
-                  {post.author.pseudonym}
-                </span>
-                {!isVerified && (
-                  <span
-                    className="tag border-amber-500/40 text-amber-400 bg-amber-500/10 text-[9px] flex items-center gap-1"
-                    title="This user has not verified their employment with this company"
-                  >
-                    <AlertTriangle className="w-2.5 h-2.5" />
-                    Not an Employee
-                  </span>
-                )}
-              </div>
-              <span className="text-[10px] text-dim font-mono">
-                REP {post.author.reputation}
-              </span>
-            </div>
           </Link>
+          <div className="w-[2px] flex-1 bg-[#262626] my-2 rounded-full min-h-[20px]" />
         </div>
-        <div className="flex items-center gap-2">
-          <span className={`tag ${tag.tone}`}>{tag.label}</span>
-          <time className="text-[10px] text-dim font-mono">
-            {fmtDate(post.createdAt)}
-          </time>
-        </div>
-      </header>
 
-      {post.title && (
-        <h2 className="text-sm font-semibold text-fg tracking-wide mb-2">
-          <Link
-            href={`/c/${companySlug}/post/${post.id}`}
-            className="hover:underline"
-          >
-            {post.title}
-          </Link>
-        </h2>
-      )}
-
-      <p className="text-xs text-fg/90 whitespace-pre-wrap leading-relaxed font-mono font-light mb-4">
-        {post.content}
-      </p>
-
-      {post.type === "POLL" && post.pollOptions && (
-        <div className="my-4">
-          <PollWidget
-            companySlug={companySlug}
-            postId={post.id}
-            options={post.pollOptions}
-          />
-        </div>
-      )}
-
-      <footer className="flex items-center justify-between text-xs pt-3 border-t border-line text-dim">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={handleLike}
-            className={`flex items-center gap-1.5 text-xs hover:text-fg transition-colors ${
-              liked ? "text-fg font-bold" : ""
-            }`}
-          >
-            {post.type === "HOT_TAKE" ? (
-              <Flame className="w-3.5 h-3.5" />
+        {/* Right column */}
+        <div className="flex-1 min-w-0 pl-3">
+          <header className="flex items-center gap-1.5 text-sm mb-1 flex-wrap">
+            <Link
+              href={`/u/${post.author.pseudonym}`}
+              className="font-semibold text-[15px] text-[#f3f5f7] hover:underline"
+            >
+              {post.author.pseudonym}
+            </Link>
+            {isVerified ? (
+              <BadgeCheck className="w-4 h-4 text-[#0095f6] shrink-0" />
             ) : (
-              <ThumbsUp className="w-3.5 h-3.5" />
+              <span
+                className="tag text-[10px] border-rose-500/40 text-rose-400 bg-rose-500/10 flex items-center gap-1"
+                title="This user has not verified their employment with this company"
+              >
+                <ShieldAlert className="w-2.5 h-2.5" />
+                Not an Employee
+              </span>
             )}
-            <span className="font-mono text-[11px]">{likes}</span>
-          </button>
+            <time className="text-[13px] text-[#777777]">
+              {`• ${relativeTime(post.createdAt)}`}
+            </time>
+            <span className={`tag ${tag.tone} text-[10px]`}>{tag.label}</span>
+          </header>
 
-          <Link
-            href={`/c/${companySlug}/post/${post.id}`}
-            className="flex items-center gap-1.5 text-xs hover:text-fg transition-colors"
-          >
-            <MessageSquare className="w-3.5 h-3.5" />
-            <span className="font-mono text-[11px]">{post.commentCount}</span>
-            <span className="hidden sm:inline text-[10px]">REPLIES</span>
-          </Link>
+          {post.title && (
+            <h2 className="text-[15px] font-semibold text-[#f3f5f7] mb-1">
+              <Link
+                href={`/c/${companySlug}/post/${post.id}`}
+                className="hover:underline"
+              >
+                {post.title}
+              </Link>
+            </h2>
+          )}
+
+          <p className="text-[15px] leading-relaxed text-[#f3f5f7] whitespace-pre-wrap font-normal">
+            {post.content}
+          </p>
+
+          {post.type === "POLL" && post.pollOptions && (
+            <div className="mt-3 max-w-md">
+              <PollWidget
+                companySlug={companySlug}
+                postId={post.id}
+                options={post.pollOptions}
+              />
+            </div>
+          )}
+
+          <footer className="flex items-center gap-1 text-sm pt-1 mt-1 -ml-1">
+            <button
+              onClick={handleLike}
+              className={actionBtn}
+              aria-label="Like"
+            >
+              <Heart
+                className={`w-[18px] h-[18px] transition-colors ${
+                  liked ? "fill-[#ff3040] text-[#ff3040]" : ""
+                }`}
+              />
+              <span className="text-[13px] font-medium text-dim">
+                {likes}
+              </span>
+            </button>
+
+            <Link
+              href={`/c/${companySlug}/post/${post.id}`}
+              className={actionBtn}
+              aria-label="Reply"
+            >
+              <MessageSquare className="w-[18px] h-[18px]" />
+              <span className="text-[13px] font-medium text-dim">
+                {post.commentCount}
+              </span>
+            </Link>
+
+            <Link
+              href={`/c/${companySlug}/post/${post.id}`}
+              className={actionBtn}
+              aria-label="Repost"
+            >
+              <Repeat2 className="w-[18px] h-[18px]" />
+            </Link>
+
+            <Link
+              href={`/c/${companySlug}/post/${post.id}`}
+              className={actionBtn}
+              aria-label="Share"
+            >
+              <Share2 className="w-[18px] h-[18px]" />
+            </Link>
+          </footer>
         </div>
-
-        <Link
-          href={`/c/${companySlug}/post/${post.id}`}
-          className="text-[10px] uppercase tracking-widest text-dim hover:text-fg"
-        >
-          OPEN THREAD →
-        </Link>
-      </footer>
+      </div>
     </article>
   );
 }

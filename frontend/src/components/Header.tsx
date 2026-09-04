@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
-import { Shield, Radio, ArrowRight, LogOut, Terminal, User, Menu, X } from "lucide-react";
+import { ArrowRight, LogOut, User, Menu, X, Radio, Shield } from "lucide-react";
 import { LogoutModal } from "./LogoutModal";
 
 export function Header({
@@ -26,126 +26,135 @@ export function Header({
     router.push("/");
   };
 
-  const navItems = (
-    <>
-      {companySlug && (
-        <>
-          <Link
-            href={`/c/${companySlug}`}
-            onClick={() => setMenuOpen(false)}
-            className="btn text-[10px] py-1 px-2.5 h-8"
-          >
-            Feed
-          </Link>
-          <Link
-            href={`/c/${companySlug}/pulse`}
-            onClick={() => setMenuOpen(false)}
-            className="btn text-[10px] py-1 px-2.5 h-8 flex items-center gap-1.5"
-          >
-            <Radio className="w-3 h-3 text-dim" />
-            Pulse
-          </Link>
-        </>
-      )}
-
-      <Link
-        href="/verify"
-        onClick={() => setMenuOpen(false)}
-        className="btn text-[10px] py-1 px-2.5 h-8 flex items-center gap-1.5"
-      >
-        <Shield className="w-3 h-3 text-dim" />
-        Verify
-      </Link>
-
-      {user && (
-        <Link
-          href="/profile"
-          onClick={() => setMenuOpen(false)}
-          className="btn text-[10px] py-1 px-2.5 h-8 flex items-center gap-1.5"
-        >
-          <User className="w-3 h-3 text-dim" />
-          Profile
-        </Link>
-      )}
-    </>
-  );
+  const close = () => setMenuOpen(false);
 
   return (
-    <header className="border-b border-line bg-ink/95 backdrop-blur sticky top-0 z-40">
-      <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3 min-w-0">
+    <header className="sticky top-0 z-40 backdrop-blur-md bg-[#101010]/80 border-b border-[#262626]">
+      <div className="max-w-[640px] mx-auto px-4 h-14 flex items-center justify-between gap-4">
+        {/* Left spacer for symmetry */}
+        <div className="w-10" />
+
+        {/* Centered title */}
+        <div className="flex items-center gap-2 min-w-0">
           <Link
             href={companySlug ? `/c/${companySlug}` : "/"}
-            className="flex items-center gap-2 font-bold tracking-wider text-xs uppercase hover:opacity-80 shrink-0"
+            onClick={close}
+            className="font-bold text-[15px] text-[#f3f5f7] hover:opacity-80 truncate"
           >
-            <Terminal className="w-4 h-4 text-fg" />
-            <span className="hidden sm:inline">Corporate Underground</span>
-            <span className="sm:hidden">CU</span>
+            {companyName ?? "Corporate Underground"}
           </Link>
-          {companySlug && (
-            <>
-              <span className="text-dim text-xs">/</span>
-              <span className="text-xs uppercase tracking-widest text-fg font-semibold truncate max-w-[120px] sm:max-w-[180px]">
-                {companyName ?? companySlug}
-              </span>
-            </>
-          )}
         </div>
 
-        {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-2">
-          {navItems}
-          {user ? (
-            <button
-              onClick={() => setConfirmOpen(true)}
-              title={`Logged in as ${user.id}`}
-              className="btn text-[10px] py-1 px-2.5 h-8 flex items-center gap-1.5 text-dim hover:text-fg"
+        {/* Right actions */}
+        <div className="flex items-center gap-0.5">
+          {companySlug && (
+            <Link
+              href={`/c/${companySlug}/pulse`}
+              onClick={close}
+              title="Pulse"
+              className="p-2 rounded-full text-[#777777] hover:text-[#f3f5f7] hover:bg-white/5 transition-colors"
             >
-              <LogOut className="w-3 h-3" />
-              <span>Exit</span>
-            </button>
+              <Radio className="w-5 h-5" />
+            </Link>
+          )}
+          <Link
+            href="/verify"
+            onClick={close}
+            title="Verify"
+            className="p-2 rounded-full text-[#777777] hover:text-[#f3f5f7] hover:bg-white/5 transition-colors"
+          >
+            <Shield className="w-5 h-5" />
+          </Link>
+          {user ? (
+            <Link
+              href="/profile"
+              onClick={close}
+              title="Profile"
+              className="p-2 rounded-full text-[#777777] hover:text-[#f3f5f7] hover:bg-white/5 transition-colors"
+            >
+              <User className="w-5 h-5" />
+            </Link>
           ) : (
             <Link
               href="/login"
-              className="btn btn-primary text-[10px] py-1 px-3 h-8 flex items-center gap-1.5"
+              onClick={close}
+              className="rounded-full bg-white text-black font-semibold text-xs px-3 py-1.5 hover:bg-white/90 transition-colors"
             >
               Enter
-              <ArrowRight className="w-3 h-3" />
             </Link>
           )}
-        </nav>
 
-        {/* Mobile hamburger */}
-        <button
-          onClick={() => setMenuOpen((v) => !v)}
-          className="md:hidden btn p-2 h-8 w-8"
-          aria-label="Toggle menu"
-        >
-          {menuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
-        </button>
+          {/* Mobile menu toggle */}
+          <button
+            onClick={() => setMenuOpen((v) => !v)}
+            className="md:hidden p-2 rounded-full text-[#777777] hover:text-[#f3f5f7] hover:bg-white/5"
+            aria-label="Toggle menu"
+          >
+            {menuOpen ? (
+              <X className="w-5 h-5" />
+            ) : (
+              <Menu className="w-5 h-5" />
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Mobile dropdown */}
       {menuOpen && (
-        <div className="md:hidden border-t border-line bg-ink/95">
-          <nav className="max-w-5xl mx-auto px-4 py-3 flex flex-col items-stretch gap-2">
-            {navItems}
+        <div className="md:hidden border-t border-[#262626]">
+          <nav className="max-w-[640px] mx-auto px-4 py-3 flex flex-col items-stretch gap-1">
+            {companySlug && (
+              <Link
+                href={`/c/${companySlug}`}
+                onClick={close}
+                className="px-4 py-2.5 rounded-xl text-sm text-[#777777] hover:text-[#f3f5f7] hover:bg-white/5"
+              >
+                Feed
+              </Link>
+            )}
+            {companySlug && (
+              <Link
+                href={`/c/${companySlug}/pulse`}
+                onClick={close}
+                className="px-4 py-2.5 rounded-xl text-sm text-[#777777] hover:text-[#f3f5f7] hover:bg-white/5"
+              >
+                Pulse
+              </Link>
+            )}
+            <Link
+              href="/verify"
+              onClick={close}
+              className="px-4 py-2.5 rounded-xl text-sm text-[#777777] hover:text-[#f3f5f7] hover:bg-white/5"
+            >
+              Verify
+            </Link>
+            {user && (
+              <Link
+                href="/profile"
+                onClick={close}
+                className="px-4 py-2.5 rounded-xl text-sm text-[#777777] hover:text-[#f3f5f7] hover:bg-white/5"
+              >
+                Profile
+              </Link>
+            )}
             {user ? (
               <button
-                onClick={() => setConfirmOpen(true)}
-                className="btn text-[10px] py-2 h-8 flex items-center gap-1.5 text-dim hover:text-fg justify-center"
+                onClick={() => {
+                  close();
+                  setConfirmOpen(true);
+                }}
+                className="px-4 py-2.5 rounded-xl text-sm text-[#777777] hover:text-[#f3f5f7] hover:bg-white/5 flex items-center gap-2 justify-center"
               >
-                <LogOut className="w-3 h-3" />
+                <LogOut className="w-4 h-4" />
                 Exit
               </button>
             ) : (
               <Link
                 href="/login"
-                onClick={() => setMenuOpen(false)}
-                className="btn btn-primary text-[10px] py-2 h-8 flex items-center gap-1.5 justify-center"
+                onClick={close}
+                className="rounded-full bg-white text-black font-semibold text-xs px-4 py-2 hover:bg-white/90 text-center"
               >
                 Enter
-                <ArrowRight className="w-3 h-3" />
               </Link>
             )}
           </nav>

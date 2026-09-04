@@ -15,7 +15,7 @@ import { FeedCard } from "@/components/FeedCard";
 import { PostCreator } from "@/components/PostCreator";
 import { RequireAuth } from "@/components/RequireAuth";
 import { useAuth } from "@/lib/auth";
-import { Radio, RefreshCw, AlertCircle, ShieldAlert, UserPlus, Loader2 } from "lucide-react";
+import { Radio, RefreshCw, ShieldAlert, UserPlus, Loader2, Users } from "lucide-react";
 
 type Filter = "ALL" | PostType;
 type Sort = "latest" | "hottest" | "popular";
@@ -31,7 +31,6 @@ function FeedInner({ companySlug }: { companySlug: string }) {
   const [loadMore, setLoadMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [notMember, setNotMember] = useState(false);
   const [joining, setJoining] = useState(false);
   const [joinNotice, setJoinNotice] = useState<string | null>(null);
 
@@ -46,7 +45,6 @@ function FeedInner({ companySlug }: { companySlug: string }) {
     (m) => m.company.slug === companySlug,
   );
   const isMember = Boolean(membership);
-  const isVerified = membership?.status === "VERIFIED";
 
   const load = useCallback(
     async (append = false) => {
@@ -137,7 +135,7 @@ function FeedInner({ companySlug }: { companySlug: string }) {
     };
   }, [isMember, load]);
 
-  // Company fetch for non-members (still show join UI + info)
+  // Company fetch for non-members
   useEffect(() => {
     if (isMember) return;
     companiesApi
@@ -168,20 +166,22 @@ function FeedInner({ companySlug }: { companySlug: string }) {
   };
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col bg-[#101010]">
       <Header companySlug={companySlug} companyName={company?.name} />
 
-      <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-8">
-        {/* Company Subheader */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 mb-6 border-b border-line">
+      <main className="flex-1 max-w-[640px] w-full mx-auto px-4 py-6">
+        {/* Company Header */}
+        <div className="flex items-center justify-between gap-4 pb-5 mb-5 border-b border-[#262626]">
           <div>
-            <div className="label mb-1">// SECURE COMPOUND</div>
-            <h1 className="text-xl font-bold tracking-tight text-fg uppercase">
+            <h1 className="text-xl font-bold tracking-tight text-[#f3f5f7]">
               {company?.name ?? companySlug}
             </h1>
-            <p className="text-[11px] text-dim font-mono mt-1">
-              {company?.members ?? 0} VERIFIED WORKERS · STRICT PSEUDONYMITY
-            </p>
+            <div className="flex items-center gap-2 mt-1 text-xs text-[#777777]">
+              <span className="flex items-center gap-1">
+                <Users className="w-3.5 h-3.5" />
+                {company?.members ?? 0} verified employees
+              </span>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
@@ -189,15 +189,15 @@ function FeedInner({ companySlug }: { companySlug: string }) {
               <>
                 <Link
                   href={`/c/${companySlug}/pulse`}
-                  className="btn text-xs flex items-center gap-1.5"
+                  className="rounded-full border border-[#262626] bg-[#181818] hover:bg-white/5 text-[#f3f5f7] text-xs font-semibold px-3.5 py-1.5 flex items-center gap-1.5 transition-colors"
                 >
-                  <Radio className="w-3.5 h-3.5 text-dim" />
-                  Pulse Monitor
+                  <Radio className="w-3.5 h-3.5 text-[#777777]" />
+                  Pulse
                 </Link>
                 <button
                   onClick={() => void load(false)}
                   title="Refresh feed"
-                  className="btn p-2"
+                  className="p-2 rounded-full border border-[#262626] bg-[#181818] hover:bg-white/5 text-[#777777] hover:text-[#f3f5f7] transition-colors"
                 >
                   <RefreshCw
                     className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`}
@@ -208,35 +208,35 @@ function FeedInner({ companySlug }: { companySlug: string }) {
               <button
                 onClick={() => void handleJoin()}
                 disabled={joining}
-                className="btn btn-primary text-xs flex items-center gap-1.5"
+                className="rounded-full bg-white text-black font-semibold text-xs px-4 py-2 hover:bg-white/90 transition-colors flex items-center gap-1.5"
               >
                 {joining ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 ) : (
                   <UserPlus className="w-3.5 h-3.5" />
                 )}
-                {joining ? "JOINING..." : "JOIN COMPANY"}
+                {joining ? "Joining..." : "Join"}
               </button>
             )}
           </div>
         </div>
 
         {joinNotice && (
-          <div className="mb-5 p-3 border border-emerald-500/40 bg-emerald-500/10 text-emerald-300 text-[11px] font-mono">
+          <div className="mb-5 p-3.5 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-300 text-xs">
             {joinNotice}
           </div>
         )}
 
         {!isMember && !joinNotice && (
           <div className="card p-6 border-line bg-panel mb-6">
-            <div className="flex items-center gap-3 text-fg text-xs mb-2">
+            <div className="flex items-center gap-3 text-fg text-sm mb-2">
               <ShieldAlert className="w-4 h-4 text-dim shrink-0" />
-              <span className="font-semibold">You don&apos;t have access</span>
+              <span className="font-semibold">Private Compound</span>
             </div>
-            <p className="text-[11px] text-dim font-mono">
-              {company?.name ?? companySlug} is a private company compound.
+            <p className="text-xs text-dim leading-relaxed">
+              {company?.name ?? companySlug} is a private company network.
               Join to read the anonymous stream. Verified employees get full
-              posting rights and a sealed pseudonym.
+              posting rights and sealed pseudonymity.
             </p>
           </div>
         )}
@@ -246,10 +246,9 @@ function FeedInner({ companySlug }: { companySlug: string }) {
             {/* Composer */}
             <PostCreator companySlug={companySlug} onCreated={handleCreated} />
 
-            {/* Filter Bar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-3 border-b border-line">
-              <div className="label">FILTER STREAM</div>
-              <div className="flex flex-wrap gap-1.5">
+            {/* Pill filter tabs */}
+            <div className="flex items-center justify-between gap-2 mb-4 pb-3 border-b border-[#262626] overflow-x-auto no-scrollbar">
+              <div className="flex items-center gap-1 shrink-0">
                 {(
                   [
                     ["ALL", "All"],
@@ -262,24 +261,33 @@ function FeedInner({ companySlug }: { companySlug: string }) {
                   <button
                     key={f}
                     onClick={() => setFilter(f)}
-                    className={`tab ${filter === f ? "tab-active" : ""}`}
+                    className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all ${
+                      filter === f
+                        ? "bg-white text-black"
+                        : "text-[#777777] hover:text-[#f3f5f7] hover:bg-white/5"
+                    }`}
                   >
                     {label}
                   </button>
                 ))}
               </div>
-              <div className="flex gap-1.5">
+
+              <div className="flex items-center gap-1 shrink-0">
                 {(
                   [
                     ["latest", "Latest"],
                     ["hottest", "Hottest"],
-                    ["popular", "Popular"],
+                    ["popular", "Top"],
                   ] as [Sort, string][]
                 ).map(([s, label]) => (
                   <button
                     key={s}
                     onClick={() => setSort(s)}
-                    className={`tab ${sort === s ? "tab-active" : ""}`}
+                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
+                      sort === s
+                        ? "bg-[#222222] text-[#f3f5f7]"
+                        : "text-[#777777] hover:text-[#f3f5f7]"
+                    }`}
                   >
                     {label}
                   </button>
@@ -289,44 +297,44 @@ function FeedInner({ companySlug }: { companySlug: string }) {
 
             {/* Feed List */}
             {error && (
-              <div className="card p-6 border-danger/40 bg-danger/5 mb-6">
-                <div className="flex items-center gap-3 text-danger text-xs mb-2">
+              <div className="card p-5 border-danger/40 bg-danger/5 mb-6">
+                <div className="flex items-center gap-2 text-danger text-xs mb-1 font-semibold">
                   <ShieldAlert className="w-4 h-4 shrink-0" />
-                  <span className="font-semibold">Unable to fetch stream</span>
+                  <span>Unable to fetch stream</span>
                 </div>
-                <p className="text-[11px] text-dim font-mono mb-4">{error}</p>
-                <p className="text-[10px] text-dim font-mono">
-                  Tip: Verify your corporate email for /{companySlug} under the
-                  Verify tab.
-                </p>
+                <p className="text-xs text-dim">{error}</p>
               </div>
             )}
 
-            <div className="space-y-4">
+            <div className="space-y-3">
               {posts.map((p) => (
                 <FeedCard key={p.id} post={p} companySlug={companySlug} />
               ))}
 
               {!loading && posts.length === 0 && !error && (
                 <div className="card p-12 text-center border-line">
-                  <div className="label mb-2">// SILENCE IN THE TUNNEL</div>
-                  <p className="text-xs text-dim font-mono max-w-sm mx-auto">
-                    No entries found under this filter. Break the silence with
-                    an anonymous note above.
+                  <p className="text-sm font-semibold text-[#f3f5f7] mb-1">
+                    No posts yet
+                  </p>
+                  <p className="text-xs text-[#777777] max-w-sm mx-auto">
+                    Be the first to start a thread anonymously.
                   </p>
                 </div>
               )}
 
               {loading && posts.length === 0 && (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {[1, 2, 3].map((i) => (
                     <div
                       key={i}
-                      className="card p-6 border-line animate-pulse space-y-3"
+                      className="card p-5 border-line animate-pulse space-y-3"
                     >
-                      <div className="h-4 bg-panel2 w-1/3" />
-                      <div className="h-3 bg-panel2 w-3/4" />
-                      <div className="h-3 bg-panel2 w-1/2" />
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-panel2" />
+                        <div className="h-4 bg-panel2 w-1/3 rounded-full" />
+                      </div>
+                      <div className="h-3 bg-panel2 w-3/4 rounded-full" />
+                      <div className="h-3 bg-panel2 w-1/2 rounded-full" />
                     </div>
                   ))}
                 </div>
@@ -334,7 +342,7 @@ function FeedInner({ companySlug }: { companySlug: string }) {
 
               {loadMore && (
                 <div className="py-4 flex justify-center">
-                  <Loader2 className="w-4 h-4 animate-spin text-dim" />
+                  <Loader2 className="w-5 h-5 animate-spin text-dim" />
                 </div>
               )}
 

@@ -3,7 +3,7 @@
 
 export function Identicon({
   seed,
-  size = 28,
+  size = 36,
 }: {
   seed: string;
   size?: number;
@@ -31,28 +31,33 @@ export function Identicon({
   }
 
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 5 5"
-      className="shrink-0 bg-panel2 border border-line"
-      aria-hidden="true"
+    <div
+      className="rounded-full overflow-hidden border border-[#262626] shrink-0"
+      style={{ width: size, height: size }}
     >
-      {grid.map((row, y) =>
-        row.map(
-          (filled, x) =>
-            filled && (
-              <rect
-                key={`${x}-${y}`}
-                x={x}
-                y={y}
-                width={1}
-                height={1}
-                fill="#e4e4e7"
-              />
-            ),
-        ),
-      )}
-    </svg>
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 5 5"
+        className="bg-panel2"
+        aria-hidden="true"
+      >
+        {grid.map((row, y) =>
+          row.map(
+            (filled, x) =>
+              filled && (
+                <rect
+                  key={`${x}-${y}`}
+                  x={x}
+                  y={y}
+                  width={1}
+                  height={1}
+                  fill="#f3f5f7"
+                />
+              ),
+          ),
+        )}
+      </svg>
+    </div>
   );
 }
