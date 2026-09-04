@@ -15,6 +15,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Identicon } from "@/components/Identicon";
 import { PollWidget } from "@/components/PollWidget";
+import { useCommunitySSE } from "@/hooks/useCommunitySSE";
 import {
   ArrowLeft,
   Heart,
@@ -52,6 +53,25 @@ export default function PostDetailPage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useCommunitySSE(companySlug, (event) => {
+    if (event.type === "POST_LIKED" && event.postId === id) {
+      setPost((prev) => (prev ? { ...prev, likeCount: event.likeCount } : prev));
+    } else if (event.type === "POST_COMMENTED" && event.postId === id) {
+      setPost((prev) => (prev ? { ...prev, commentCount: event.commentCount } : prev));
+      if (event.comment) {
+        setComments((prev) => {
+          const raw = event.comment as Comment;
+          if (prev.some((c) => c.id === raw.id)) return prev;
+          const normalized: Comment = {
+            ...raw,
+            replies: raw.replies ?? [],
+          };
+          return [...prev, normalized];
+        });
+      }
+    }
+  });
 
   useEffect(() => {
     const load = async () => {

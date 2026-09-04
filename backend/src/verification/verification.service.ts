@@ -2,6 +2,7 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { AnonymousIdentityService } from '../anonymous-identity/anonymous-identity.service';
 import { EmailService } from '../email/email.service';
+import { CommunityEventsService } from '../community/community-events.service';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -10,6 +11,7 @@ export class VerificationService {
     private prisma: PrismaService,
     private identityService: AnonymousIdentityService,
     private emailService: EmailService,
+    private eventsService: CommunityEventsService,
   ) {}
 
   async requestEmailOtp(userId: string, companySlug: string, workEmail: string) {
@@ -101,6 +103,15 @@ export class VerificationService {
       data: { targetEmail: null, otpCodeHash: null },
     });
 
+    const verifiedCount = await this.prisma.companyMembership.count({
+      where: { companyId: request.companyId, status: 'VERIFIED' },
+    });
+    this.eventsService.emit({
+      type: 'STATS_UPDATED',
+      companySlug: request.company.slug,
+      verifiedCount,
+    });
+
     return {
       membershipId: membership.id,
       company: { slug: request.company.slug, name: request.company.name },
@@ -161,6 +172,15 @@ export class VerificationService {
     if (!identity) {
       identity = await this.identityService.createIdentity(company.id, membership.id);
     }
+
+    const verifiedCount = await this.prisma.companyMembership.count({
+      where: { companyId: company.id, status: 'VERIFIED' },
+    });
+    this.eventsService.emit({
+      type: 'STATS_UPDATED',
+      companySlug: company.slug,
+      verifiedCount,
+    });
 
     return {
       membershipId: membership.id,

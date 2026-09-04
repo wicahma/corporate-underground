@@ -1,12 +1,14 @@
 import {
-  Controller, Get, Post, Body, Param, Query, UseGuards, Request,
+  Controller, Get, Post, Body, Param, Query, UseGuards, Request, Sse,
   NotFoundException, BadRequestException, ForbiddenException,
 } from '@nestjs/common';
+import { Observable } from 'rxjs';
 import { IsString, IsOptional, IsArray, IsDateString, IsBoolean, MaxLength, IsIn, IsInt, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CommunityService } from './community.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PrivacyAssistanceService } from '../privacy-assistance/privacy-assistance.service';
+import { CommunityEventsService } from './community-events.service';
 
 export class CreatePostDto {
   @IsString()
@@ -97,7 +99,13 @@ export class CommunityController {
   constructor(
     private communityService: CommunityService,
     private privacyService: PrivacyAssistanceService,
+    private eventsService: CommunityEventsService,
   ) {}
+
+  @Sse('events')
+  events(@Param('companySlug') companySlug: string) {
+    return this.eventsService.subscribe(companySlug);
+  }
 
   // Universal read access: any user can join as unverified member with pseudonym
   private async getIdentity(req: { user: { sub: string } }, companySlug: string) {
@@ -158,7 +166,16 @@ export class CommunityController {
       }
     }
 
-    return this.communityService.createPost(identity.id, company.id, dto);
+    const post = await this.communityService.createPost(identity.id, company.id, dto);
+    
+    // Emit NEW_POST event
+    this.eventsService.emit({
+      type: 'NEW_POST',
+      companySlug,
+      post,
+    });
+    
+    return post;
   }
 
   @Post('posts/:id/comments')
@@ -169,7 +186,19 @@ export class CommunityController {
     @Body() dto: AddCommentDto,
   ) {
     const { identity } = await this.getIdentity(req, companySlug);
-    return this.communityService.addComment(identity.id, companySlug, postId, dto);
+    const comment = await this.communityService.addComment(identity.id, companySlug, postId, dto);
+
+    // Update commentCount for SSE
+    const post = await this.communityService.getPostCounts(postId);
+    this.eventsService.emit({
+      type: 'POST_COMMENTED',
+      companySlug,
+      postId,
+      commentCount: post?.commentCount ?? 0,
+      comment,
+    });
+
+    return comment;
   }
 
   @Post('posts/:id/react')
@@ -181,7 +210,19 @@ export class CommunityController {
   ) {
     const { identity } = await this.getIdentity(req, companySlug);
     if (!dto.type) throw new BadRequestException('Reaction type required');
-    return this.communityService.addReaction(identity.id, postId, dto.type, dto.commentId);
+    const res = await this.communityService.addReaction(identity.id, postId, dto.type, dto.commentId);
+
+    if (!dto.commentId) {
+      const post = await this.communityService.getPostCounts(postId);
+      this.eventsService.emit({
+        type: 'POST_LIKED',
+        companySlug,
+        postId,
+        likeCount: post?.likeCount ?? 0,
+      });
+    }
+
+    return res;
   }
 
   @Post('posts/:id/vote')

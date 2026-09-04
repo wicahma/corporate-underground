@@ -336,6 +336,12 @@ export const companiesApi = {
     api<unknown>(`/companies/${encodeURIComponent(slug)}/join`, { method: "POST" }),
 };
 
+export type CommunityEvent =
+  | { type: "NEW_POST"; companySlug: string; post: Post }
+  | { type: "POST_LIKED"; companySlug: string; postId: string; likeCount: number }
+  | { type: "POST_COMMENTED"; companySlug: string; postId: string; commentCount: number; comment: unknown }
+  | { type: "STATS_UPDATED"; companySlug: string; verifiedCount: number };
+
 export const communityApi = {
   feed: (slug: string, type?: string, sort?: string, cursor?: string) => {
     const params = new URLSearchParams();

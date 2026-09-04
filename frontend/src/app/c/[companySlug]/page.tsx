@@ -16,6 +16,7 @@ import { PostCreator } from "@/components/PostCreator";
 import { CompanyVerificationCard } from "@/components/CompanyVerificationCard";
 import { RequireAuth } from "@/components/RequireAuth";
 import { useAuth } from "@/lib/auth";
+import { useCommunitySSE } from "@/hooks/useCommunitySSE";
 import { Radio, RefreshCw, ShieldAlert, UserPlus, Loader2, Users } from "lucide-react";
 
 type Filter = "ALL" | PostType;
@@ -40,6 +41,46 @@ function FeedInner({ companySlug }: { companySlug: string }) {
   const hasMoreRef = useRef(true);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  // SSE event handler
+  useCommunitySSE(companySlug, (event) => {
+    if (!isMember) return;
+
+    switch (event.type) {
+      case "NEW_POST":
+        setPosts((prev) => {
+          if (prev.some((p) => p.id === event.post.id)) return prev;
+          return [event.post, ...prev];
+        });
+        break;
+
+      case "POST_LIKED":
+        setPosts((prev) =>
+          prev.map((p) =>
+            p.id === event.postId
+              ? { ...p, likeCount: event.likeCount }
+              : p,
+          ),
+        );
+        break;
+
+      case "POST_COMMENTED":
+        setPosts((prev) =>
+          prev.map((p) =>
+            p.id === event.postId
+              ? { ...p, commentCount: event.commentCount }
+              : p,
+          ),
+        );
+        break;
+
+      case "STATS_UPDATED":
+        setCompany((prev) =>
+          prev ? { ...prev, verifiedCount: event.verifiedCount } : prev,
+        );
+        break;
+    }
+  });
 
   // Membership check
   const membership = user?.memberships.find(

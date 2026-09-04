@@ -18,6 +18,13 @@ export class CommunityService {
     return this.prisma.company.findUnique({ where: { slug } });
   }
 
+  getPostCounts(postId: string) {
+    return this.prisma.post.findUnique({
+      where: { id: postId },
+      select: { commentCount: true, likeCount: true },
+    });
+  }
+
   async findMembership(userId: string, companyId: string) {
     return this.prisma.companyMembership.findUnique({
       where: { userId_companyId: { userId, companyId } },
