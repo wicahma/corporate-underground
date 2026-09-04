@@ -370,7 +370,7 @@ export const communityApi = {
     ),
   // ponytail: check-in endpoint assumed under community; align with backend when it lands.
   checkin: (slug: string, mood: string) =>
-    api<unknown>(`/community/${encodeURIComponent(slug)}/checkins`, {
+    api<unknown>(`/community/${encodeURIComponent(slug)}/temperature`, {
       method: "POST",
       body: JSON.stringify({ mood }),
     }),

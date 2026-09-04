@@ -27,8 +27,8 @@ export function TemperatureCheckIn({
       await communityApi.checkin(companySlug, key);
       setMood(key);
       onChecked?.();
-    } catch {
-      setError("Check-in failed. Server offline or unverified.");
+    } catch (err: unknown) {
+      setError((err as Error).message || "Check-in failed.");
     }
   };
 
