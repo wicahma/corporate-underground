@@ -87,6 +87,7 @@ export class CompanyService {
         thresholdMet: false,
         message: 'Underground pulse requires minimum 5 verified employees to preserve anonymity.',
         activeMembers: verifiedCount,
+        verifiedCount,
       };
     }
 
@@ -104,6 +105,7 @@ export class CompanyService {
     return {
       thresholdMet: true,
       activeMembers: verifiedCount,
+      verifiedCount,
       totalCheckIns: checkIns.length,
       moodDistribution: moodCounts,
     };

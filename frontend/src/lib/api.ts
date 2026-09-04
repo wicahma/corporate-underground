@@ -228,8 +228,8 @@ export function normPulse(raw: unknown): Pulse {
   return {
     temperature: (r.temperature as number) ?? (r.temp as number) ?? null,
     moods: (r.moods as Record<string, number>) ?? (r.moodDistribution as Record<string, number>) ?? {},
-    activeUsers: (r.activeUsers as number) ?? (r.active as number) ?? 0,
-    totalMembers: (r.totalMembers as number) ?? (r.members as number) ?? 0,
+    activeUsers: (r.activeMembers as number) ?? (r.activeUsers as number) ?? (r.active as number) ?? 0,
+    totalMembers: (r.verifiedCount as number) ?? (r.totalMembers as number) ?? (r.members as number) ?? 0,
     trendingTopics: Array.isArray(r.trendingTopics)
       ? (r.trendingTopics as Record<string, unknown>[]).map((t) => ({
           name: (t.name as string) ?? (t.topic as string) ?? "",
