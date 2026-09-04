@@ -45,6 +45,7 @@ export class CommunityService {
 
   async getFeed(
     companySlug: string,
+    identityId: string | null,
     opts: { limit?: number; cursor?: string; sort?: string; type?: string },
   ) {
     const company = await this.prisma.company.findUnique({ where: { slug: companySlug } });
@@ -78,7 +79,10 @@ export class CommunityService {
         author: { select: { id: true, pseudonym: true, avatarSeed: true, reputation: true } },
         _count: { select: { comments: true, reactions: true } },
         pollOptions: { select: { id: true, text: true, voteCount: true } },
-        reactions: { select: { type: true } },
+        reactions: { 
+          where: identityId ? { authorId: identityId, type: 'LIKE' } : undefined,
+          select: { type: true, authorId: true }
+        },
       },
     });
 
@@ -88,16 +92,25 @@ export class CommunityService {
       nextCursor = last.id;
     }
 
-    return { posts, nextCursor };
+    // Add userLiked field to each post
+    const postsWithLikeStatus = posts.map(post => ({
+      ...post,
+      userLiked: identityId ? post.reactions.some(r => r.authorId === identityId && r.type === 'LIKE') : false,
+    }));
+
+    return { posts: postsWithLikeStatus, nextCursor };
   }
 
-  async getPostWithThread(companyId: string, postId: string) {
+  async getPostWithThread(companyId: string, postId: string, identityId: string) {
     const post = await this.prisma.post.findFirst({
       where: { id: postId, companyId, isDeleted: false },
       include: {
         author: { select: { id: true, pseudonym: true, avatarSeed: true, reputation: true } },
         pollOptions: { select: { id: true, text: true, voteCount: true } },
-        reactions: { select: { type: true } },
+        reactions: {
+          where: { authorId: identityId, type: 'LIKE' },
+          select: { type: true, authorId: true }
+        },
       },
     });
     if (!post) return null;
@@ -126,7 +139,9 @@ export class CommunityService {
       }
     }
 
-    return { ...post, comments: roots };
+    const userLiked = post.reactions.some(r => r.authorId === identityId && r.type === 'LIKE');
+
+    return { ...post, comments: roots, userLiked };
   }
 
   async createPost(

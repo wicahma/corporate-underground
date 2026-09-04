@@ -110,6 +110,7 @@ export interface Post {
   author: Author;
   pollOptions: PollOption[] | null;
   metadata: Record<string, unknown> | null;
+  userLiked?: boolean;
 }
 
 export interface Comment {
@@ -191,6 +192,7 @@ export function normPost(raw: unknown): Post {
         }))
       : null,
     metadata: (r.metadata as Record<string, unknown>) ?? null,
+    userLiked: (r.userLiked as boolean) ?? false,
   };
 }
 

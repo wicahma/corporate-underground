@@ -124,8 +124,8 @@ export class CommunityController {
     @Param('companySlug') companySlug: string,
     @Query() query: FeedQueryDto,
   ) {
-    await this.getIdentity(req, companySlug);
-    return this.communityService.getFeed(companySlug, query);
+    const { identity } = await this.getIdentity(req, companySlug);
+    return this.communityService.getFeed(companySlug, identity.id, query);
   }
 
   @Get('posts/:id')
@@ -134,8 +134,8 @@ export class CommunityController {
     @Param('companySlug') companySlug: string,
     @Param('id') postId: string,
   ) {
-    const { company } = await this.getIdentity(req, companySlug);
-    const post = await this.communityService.getPostWithThread(company.id, postId);
+    const { identity, company } = await this.getIdentity(req, companySlug);
+    const post = await this.communityService.getPostWithThread(company.id, postId, identity.id);
     if (!post) throw new NotFoundException('Post not found');
     return post;
   }
