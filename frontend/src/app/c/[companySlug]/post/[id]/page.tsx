@@ -15,6 +15,8 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Identicon } from "@/components/Identicon";
 import { PollWidget } from "@/components/PollWidget";
+import { QuotedPostCard } from "@/components/QuotedPostCard";
+import { parseQuotedPost } from "@/lib/parseQuotedPost";
 import { useCommunitySSE } from "@/hooks/useCommunitySSE";
 import {
   ArrowLeft,
@@ -327,8 +329,17 @@ export default function PostDetailPage({
               )}
 
               <p className="text-[15px] leading-relaxed text-[#f3f5f7] whitespace-pre-wrap font-normal mb-3">
-                {post.content}
+                {parseQuotedPost(post.content).mainText || post.content}
               </p>
+
+              {parseQuotedPost(post.content).quote && (
+                <div className="mb-3">
+                  <QuotedPostCard
+                    author={parseQuotedPost(post.content).quote!.author}
+                    content={parseQuotedPost(post.content).quote!.text}
+                  />
+                </div>
+              )}
 
               {post.type === "POLL" && post.pollOptions && (
                 <div className="my-3 max-w-md">

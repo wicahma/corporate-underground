@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { type Post, communityApi, fmtDate } from "@/lib/api";
 import { Identicon } from "./Identicon";
 import { PollWidget } from "./PollWidget";
 import { RepostModal } from "./RepostModal";
+import { QuotedPostCard } from "./QuotedPostCard";
+import { parseQuotedPost } from "@/lib/parseQuotedPost";
 import { showToast } from "@/lib/toast";
 import {
   Heart,
@@ -46,7 +48,18 @@ export function FeedCard({
   const [likes, setLikes] = useState(post.likeCount);
   const [liked, setLiked] = useState(post.userLiked ?? false);
   const [showRepostModal, setShowRepostModal] = useState(false);
+
+  useEffect(() => {
+    setLikes(post.likeCount);
+  }, [post.likeCount]);
+
+  useEffect(() => {
+    if (post.userLiked !== undefined) {
+      setLiked(post.userLiked);
+    }
+  }, [post.userLiked]);
   const tag = TYPE_TAG[post.type] ?? TYPE_TAG.NORMAL;
+  const parsed = parseQuotedPost(post.content);
 
   const isVerified = (post.metadata as Record<string, unknown> | null)?.verifiedEmployee === true;
 
@@ -145,8 +158,15 @@ export function FeedCard({
             )}
 
             <p className="text-[15px] leading-relaxed text-[#f3f5f7] whitespace-pre-wrap font-normal">
-              {post.content}
+              {parsed.mainText || post.content}
             </p>
+
+            {parsed.quote && (
+              <QuotedPostCard
+                author={parsed.quote.author}
+                content={parsed.quote.text}
+              />
+            )}
 
             {post.type === "POLL" && post.pollOptions && (
               <div className="mt-3 max-w-md">

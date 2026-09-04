@@ -361,6 +361,7 @@ export const communityApi = {
       content: string;
       pollOptions?: string[];
       leakCheckConsent: boolean;
+      metadata?: Record<string, unknown>;
     },
   ) =>
     api<unknown>(`/community/${encodeURIComponent(slug)}/posts`, {

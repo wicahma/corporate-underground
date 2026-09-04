@@ -32,6 +32,13 @@ export function RepostModal({
         type: "NORMAL",
         title: post.title ? `Repost: ${post.title}` : undefined,
         content: fullContent,
+        metadata: {
+          repostOf: {
+            postId: post.id,
+            authorPseudonym: post.author.pseudonym,
+            content: post.content.slice(0, 200),
+          },
+        },
         leakCheckConsent: true,
       });
 

@@ -206,7 +206,10 @@ function FeedInner({ companySlug }: { companySlug: string }) {
   };
 
   const handleCreated = (newPost: Post) => {
-    setPosts((prev) => [newPost, ...prev]);
+    setPosts((prev) => {
+      if (prev.some((p) => p.id === newPost.id)) return prev;
+      return [newPost, ...prev];
+    });
   };
 
   return (
