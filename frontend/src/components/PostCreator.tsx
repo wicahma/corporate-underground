@@ -42,37 +42,11 @@ export function PostCreator({
     }
   };
 
-  const runPublish = async (consent = false) => {
+  const runPublish = async () => {
     if (!content.trim()) return;
     setLoading(true);
     setError(null);
     try {
-      if (!consent) {
-        try {
-          const leak = await privacyApi.checkLeak(
-            `${title} ${content} ${pollOptions.join(" ")}`,
-          );
-          if (leak && (leak.risk === "HIGH" || leak.risk === "MEDIUM")) {
-            setLeakResult(leak);
-            setLoading(false);
-            return;
-          }
-        } catch {
-          const lower = `${title} ${content}`.toLowerCase();
-          const suspicious = ["my name is", "i am the lead of", "my desk is", "in room "];
-          const hit = suspicious.find((k) => lower.includes(k));
-          if (hit) {
-            setLeakResult({
-              score: 75,
-              risk: "HIGH",
-              flags: [{ keyword: hit, severity: 8 }],
-            });
-            setLoading(false);
-            return;
-          }
-        }
-      }
-
       const validOptions =
         type === "POLL" ? pollOptions.filter((o) => o.trim().length > 0) : undefined;
 
@@ -81,7 +55,7 @@ export function PostCreator({
         title: title.trim() || undefined,
         content: content.trim(),
         pollOptions: validOptions,
-        leakCheckConsent: consent,
+        leakCheckConsent: true,
       });
 
       setTitle("");
@@ -94,7 +68,12 @@ export function PostCreator({
       onCreated(created);
     } catch (err: unknown) {
       const e = err as Error;
-      setError(e.message || "Failed to publish post. Ensure you are verified.");
+      const isLeakBlock = (e as unknown as { leak?: LeakResult }).leak;
+      if (isLeakBlock) {
+        setLeakResult(isLeakBlock);
+      } else {
+        setError(e.message || "Failed to publish post. Ensure you are verified.");
+      }
     } finally {
       setLoading(false);
     }
@@ -107,11 +86,7 @@ export function PostCreator({
       {leakResult && (
         <LeakDetectorModal
           leak={leakResult}
-          onConfirm={() => {
-            setLeakResult(null);
-            void runPublish(true);
-          }}
-          onCancel={() => setLeakResult(null)}
+          onClose={() => setLeakResult(null)}
         />
       )}
 
@@ -261,7 +236,7 @@ export function PostCreator({
               <button
                 type="button"
                 disabled={!content.trim() || loading}
-                onClick={() => void runPublish(false)}
+                onClick={() => void runPublish()}
                 className="rounded-full bg-white text-black font-semibold text-xs px-4 py-2 hover:bg-white/90 disabled:opacity-40 transition-colors"
               >
                 {loading ? "Posting..." : "Post"}

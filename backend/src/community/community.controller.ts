@@ -157,11 +157,15 @@ export class CommunityController {
     const { company, identity } = await this.getIdentity(req, companySlug);
 
     if (!dto.skipLeakCheck) {
-      const leakCheck = this.privacyService.checkText(dto.content || '');
-      if (leakCheck.hasLeak) {
+      const leakCheck = await this.privacyService.checkText(dto.content || '');
+      if (this.privacyService.isLeak(leakCheck)) {
         throw new BadRequestException({
-          message: 'Potential identity leak detected',
-          findings: leakCheck.findings,
+          message: 'ada indikasi data leak, pastikan terlebih dahulu bahwa pesanmu aman untuk di post',
+          error: {
+            leaked: true,
+            confidence: leakCheck.confidence,
+            reason: leakCheck.reason,
+          },
         });
       }
     }

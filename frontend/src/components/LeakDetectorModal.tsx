@@ -1,84 +1,66 @@
 "use client";
 
 import { type LeakResult } from "@/lib/api";
-import { AlertTriangle, ShieldCheck, X } from "lucide-react";
+import { AlertTriangle, X, ShieldAlert } from "lucide-react";
 
 export function LeakDetectorModal({
   leak,
-  onConfirm,
-  onCancel,
+  onClose,
 }: {
   leak: LeakResult;
-  onConfirm: () => void;
-  onCancel: () => void;
+  onClose: () => void;
 }) {
-  const isHigh = leak.risk === "HIGH";
+  const percentage = Math.round((leak.confidence ?? 0) * 100);
 
   return (
-    <div className="fixed inset-0 bg-ink/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="card max-w-lg w-full p-6 border-line bg-panel shadow-2xl relative">
+    <div className="fixed inset-0 bg-[#101010]/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+      <div className="card max-w-md w-full p-6 border-[#262626] bg-[#181818] rounded-2xl relative shadow-2xl">
         <button
-          onClick={onCancel}
-          className="absolute top-4 right-4 text-dim hover:text-fg"
+          onClick={onClose}
+          className="absolute top-4 right-4 text-[#777777] hover:text-[#f3f5f7] p-1.5 rounded-full hover:bg-white/5 transition-colors"
         >
-          <X className="w-4 h-4" />
+          <X className="w-5 h-5" />
         </button>
 
         <div className="flex items-center gap-3 mb-4">
-          <div
-            className={`p-2 border ${
-              isHigh
-                ? "border-danger text-danger bg-danger/10"
-                : "border-amber-500 text-amber-400 bg-amber-500/10"
-            }`}
-          >
-            <AlertTriangle className="w-5 h-5" />
+          <div className="p-2.5 rounded-full border border-red-500/30 bg-red-500/10 text-red-400">
+            <ShieldAlert className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-fg">
-              Identity Leak Warning
+            <h3 className="text-base font-bold text-[#f3f5f7]">
+              Indikasi Kebocoran Identitas
             </h3>
-            <p className="label">
-              RISK LEVEL: {leak.risk} (SCORE {leak.score}/100)
-            </p>
+            <span className="text-xs font-mono text-red-400">
+              Confidence Level: {percentage}%
+            </span>
           </div>
         </div>
 
-        <p className="text-xs text-dim leading-relaxed mb-4 font-mono">
-          Our client-side and server-side privacy heuristics detected potential
-          identifying patterns in your draft. Publishing these specific markers
-          may allow coworkers or managers to deduce your real identity.
-        </p>
+        {/* Warning banner */}
+        <div className="mb-4 p-3.5 rounded-xl border border-red-500/30 bg-red-500/10 text-xs text-[#f3f5f7] flex items-start gap-2.5">
+          <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+          <p className="leading-relaxed font-medium">
+            Ada indikasi data leak, pastikan terlebih dahulu bahwa pesanmu aman untuk di post.
+          </p>
+        </div>
 
-        {leak.flags && leak.flags.length > 0 && (
-          <div className="card bg-panel2 p-3 border-line mb-5 space-y-1.5">
-            <div className="label">Detected Risk Patterns:</div>
-            <ul className="text-xs space-y-1">
-              {leak.flags.map((flag, idx) => (
-                <li
-                  key={idx}
-                  className="flex items-center justify-between text-fg font-mono text-[11px]"
-                >
-                  <span className="text-danger">"{flag.keyword}"</span>
-                  <span className="text-dim text-[10px]">
-                    SEVERITY {flag.severity}/10
-                  </span>
-                </li>
-              ))}
-            </ul>
+        {leak.reason && (
+          <div className="border border-[#262626] rounded-xl p-3.5 bg-[#101010]/60 mb-5">
+            <div className="text-[11px] font-semibold text-[#777777] uppercase tracking-wider mb-1">
+              Catatan AI:
+            </div>
+            <p className="text-xs text-[#c7c7cc] leading-relaxed">
+              {leak.reason}
+            </p>
           </div>
         )}
 
-        <div className="flex items-center justify-end gap-3 pt-2">
-          <button onClick={onCancel} className="btn text-xs">
-            Edit Draft
-          </button>
+        <div className="flex items-center justify-end gap-2.5">
           <button
-            onClick={onConfirm}
-            className="btn btn-primary text-xs flex items-center gap-1.5"
+            onClick={onClose}
+            className="w-full py-2.5 rounded-full bg-white text-black text-xs font-semibold hover:bg-white/90 transition-colors"
           >
-            <ShieldCheck className="w-3.5 h-3.5" />
-            Proceed & Publish
+            Ganti Pesan Threads
           </button>
         </div>
       </div>

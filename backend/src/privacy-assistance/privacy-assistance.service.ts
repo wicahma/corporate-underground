@@ -1,122 +1,126 @@
-import { Injectable } from '@nestjs/common';
-
-export interface LeakFinding {
-  type: 'JOB_TITLE' | 'SOLITARY_PHRASE' | 'LOCATION' | 'TEAM_NAME' | 'EMAIL' | 'PHONE';
-  match: string;
-  severity: 'HIGH' | 'MEDIUM' | 'LOW';
-  suggestion: string;
-}
+import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 
 export interface LeakCheckResult {
-  hasLeak: boolean;
-  score: number; // 0 to 100 (0 = safe, 100 = very high leak risk)
-  findings: LeakFinding[];
+  leaked: boolean;
+  confidence: number; // 0-1
+  reason?: string;
 }
 
 @Injectable()
 export class PrivacyAssistanceService {
-  private jobTitles = [
-    'principal engineer', 'staff engineer', 'vp of engineering', 'vp engineering',
-    'chief technology officer', 'cto', 'chief executive officer', 'ceo',
-    'head of product', 'lead recruiter', 'director of engineering', 'engineering manager',
-    'senior director', 'general manager', 'country manager', 'scrum master',
-    'devops lead', 'chief marketing officer', 'cmo', 'cfo', 'chief financial officer',
-  ];
+  private readonly baseUrl =
+    process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+  private readonly model = process.env.LEAK_DETECTION_MODEL || 'qwen2.5:3b';
+  private readonly threshold = Number(
+    process.env.LEAK_DETECTION_THRESHOLD || '0.7',
+  );
+  private readonly timeoutMs = 30000;
 
-  private solitaryPhrases = [
-    'i am the only', "i'm the only", 'only one who', 'sole developer',
-    'only developer', 'only engineer', 'the sole person', 'only female in',
-    'only guy in', 'single handedly', 'single-handedly', 'only employee in',
-  ];
+  private buildPrompt(text: string): string {
+    return `Anda adalah pendeteksi kebocoran identitas untuk jejaring sosial anonim perusahaan.
+Analisis apakah teks berikut mengandung informasi identitas pribadi (PII) yang dapat mengungkap identitas penulisnya.
 
-  private locations = [
-    'surabaya branch', 'jakarta office', 'singapore hq', 'bali hub',
-    'sydney office', 'london branch', 'tokyo hub', 'remote from bandung',
-    'building b floor 4', '5th floor', '4th floor', '3rd floor',
-  ];
+Periksa hal-hal berikut:
+- Jabatan spesifik yang mempersempit identitas (CTO, VP, lead, manager, dll)
+- Frasa unik seperti "saya satu-satunya", "saya sendiri yang", "only developer", "single-handedly"
+- Lokasi spesifik (cabang kantor, lantai, gedung)
+- Nama tim yang kecil/spesifik
+- Alamat email, nomor telepon
+- Detail lain yang bisa deanonymize seseorang dalam konteks perusahaan
 
-  private teamNames = [
-    'core infra team', 'growth squad', 'checkout squad', 'billing pod',
-    'alpha team', 'platform ops', 'security team lead', 'data platform team',
-  ];
+Rentang teks harus dinilai sebagai berisiko ketika ada informasi yang cukup untuk mengidentifikasi individu tertentu di dalam perusahaan.
 
-  checkText(text: string): LeakCheckResult {
-    const findings: LeakFinding[] = [];
-    const lower = text.toLowerCase();
+Jawab HANYA dengan JSON tanpa teks lain:
+{
+  "leaked": boolean,
+  "confidence": number (0-1, seberapa yakin Anda bahwa ada kebocoran),
+  "reason": string (penjelasan singkat dalam Bahasa Indonesia jika leaked=true)
+}
 
-    // 1. Job Titles
-    for (const title of this.jobTitles) {
-      const regex = new RegExp(`\\b${title}\\b`, 'i');
-      if (regex.test(lower)) {
-        findings.push({
-          type: 'JOB_TITLE',
-          match: title,
-          severity: 'HIGH',
-          suggestion: `Avoid specific job title "${title}". Use generic terms like "engineer" or "contributor".`,
-        });
+Teks yang dianalisis:
+"""
+${text}
+"""`;
+  }
+
+  private async callOllama(prompt: string): Promise<string> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+
+    try {
+      const res = await fetch(`${this.baseUrl}/api/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: this.model,
+          prompt,
+          stream: false,
+          format: 'json',
+          options: {
+            temperature: 0.1,
+            num_predict: 256,
+          },
+        }),
+        signal: controller.signal,
+      });
+
+      if (!res.ok) {
+        throw new Error(`Ollama returned status ${res.status}`);
       }
+
+      const data = (await res.json()) as { response?: string };
+      return data.response || '';
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  private parseAiResponse(raw: string): LeakCheckResult {
+    try {
+      const parsed = JSON.parse(raw) as {
+        leaked?: unknown;
+        confidence?: unknown;
+        reason?: unknown;
+      };
+
+      const leaked = parsed.leaked === true;
+      const confidence = Math.max(
+        0,
+        Math.min(1, Number(parsed.confidence) || 0),
+      );
+
+      return {
+        leaked,
+        confidence,
+        reason:
+          typeof parsed.reason === 'string' ? parsed.reason : undefined,
+      };
+    } catch {
+      // Fallback: conservative treatment if AI response is unparsable
+      return { leaked: true, confidence: 1, reason: 'Analisis AI gagal diproses.' };
+    }
+  }
+
+  async checkText(text: string): Promise<LeakCheckResult> {
+    if (!text || text.trim().length === 0) {
+      return { leaked: false, confidence: 0 };
     }
 
-    // 2. Solitary phrases
-    for (const phrase of this.solitaryPhrases) {
-      if (lower.includes(phrase)) {
-        findings.push({
-          type: 'SOLITARY_PHRASE',
-          match: phrase,
-          severity: 'HIGH',
-          suggestion: `Phrase "${phrase}" uniquely identifies you. Rephrase more generally.`,
-        });
-      }
+    try {
+      const raw = await this.callOllama(this.buildPrompt(text));
+      const result = this.parseAiResponse(raw);
+      return result;
+    } catch (err) {
+      const message =
+        err instanceof Error && err.name === 'AbortError'
+          ? 'Privacy check service timeout, silakan coba lagi.'
+          : 'Privacy check service unavailable, silakan coba lagi.';
+      throw new HttpException(message, HttpStatus.SERVICE_UNAVAILABLE);
     }
+  }
 
-    // 3. Locations
-    for (const loc of this.locations) {
-      if (lower.includes(loc)) {
-        findings.push({
-          type: 'LOCATION',
-          match: loc,
-          severity: 'MEDIUM',
-          suggestion: `Location detail "${loc}" narrows down your identity. Remove or generalize.`,
-        });
-      }
-    }
-
-    // 4. Team names
-    for (const team of this.teamNames) {
-      if (lower.includes(team)) {
-        findings.push({
-          type: 'TEAM_NAME',
-          match: team,
-          severity: 'MEDIUM',
-          suggestion: `Specific team "${team}" can deanonymize you in small organizations.`,
-        });
-      }
-    }
-
-    // 5. Raw email patterns
-    const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g);
-    if (emailMatch) {
-      for (const email of emailMatch) {
-        findings.push({
-          type: 'EMAIL',
-          match: email,
-          severity: 'HIGH',
-          suggestion: 'Email address detected. Never post contact information.',
-        });
-      }
-    }
-
-    // Calculate risk score
-    let score = 0;
-    for (const f of findings) {
-      score += f.severity === 'HIGH' ? 35 : f.severity === 'MEDIUM' ? 20 : 10;
-    }
-    score = Math.min(100, score);
-
-    return {
-      hasLeak: findings.length > 0,
-      score,
-      findings,
-    };
+  // Judgment: only treat as leak when AI is confident above threshold
+  isLeak(result: LeakCheckResult): boolean {
+    return result.leaked && result.confidence >= this.threshold;
   }
 }

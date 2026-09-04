@@ -7,12 +7,15 @@ import { showToast } from "./toast";
 export const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "/api";
 
 export class ApiError extends Error {
+  leak?: { leaked: boolean; confidence: number; reason?: string };
   constructor(
     public status: number,
     message: string,
+    leak?: { leaked: boolean; confidence: number; reason?: string },
   ) {
     super(message);
     this.name = "ApiError";
+    this.leak = leak;
   }
 }
 
@@ -32,13 +35,25 @@ export async function api<T>(path: string, opts: RequestInit = {}): Promise<T> {
   }
   if (!res.ok) {
     let message = `HTTP ${res.status}`;
+    let leak: { leaked: boolean; confidence: number; reason?: string } | undefined;
     try {
-      const body = (await res.json()) as { message?: string };
+      const body = (await res.json()) as {
+        message?: string;
+        error?: { leaked?: boolean; confidence?: number; reason?: string };
+      };
       if (body.message) message = body.message;
+      const err = body.error;
+      if (err && err.leaked) {
+        leak = {
+          leaked: true,
+          confidence: Number(err.confidence) || 0,
+          reason: err.reason,
+        };
+      }
     } catch {
       /* non-JSON error body */
     }
-    throw new ApiError(res.status, message);
+    throw new ApiError(res.status, message, leak);
   }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
@@ -139,9 +154,9 @@ export interface UserMe {
 }
 
 export interface LeakResult {
-  score: number;
-  risk: RiskLevel;
-  flags: { keyword: string; severity: number }[];
+  leaked: boolean;
+  confidence: number;
+  reason?: string;
 }
 
 // ---- Normalizers (defensive against raw API shapes) ----
