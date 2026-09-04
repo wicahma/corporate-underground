@@ -76,7 +76,15 @@ export class CommunityService {
       take: limit + 1,
       ...(cursor ? { skip: 1, cursor } : {}),
       include: {
-        author: { select: { id: true, pseudonym: true, avatarSeed: true, reputation: true } },
+        author: { 
+          select: { 
+            id: true, 
+            pseudonym: true, 
+            avatarSeed: true, 
+            reputation: true,
+            membership: { select: { status: true } }
+          } 
+        },
         _count: { select: { comments: true, reactions: true } },
         pollOptions: { select: { id: true, text: true, voteCount: true } },
         reactions: { 
@@ -92,20 +100,35 @@ export class CommunityService {
       nextCursor = last.id;
     }
 
-    // Add userLiked field to each post
-    const postsWithLikeStatus = posts.map(post => ({
-      ...post,
-      userLiked: identityId ? post.reactions.some(r => r.authorId === identityId && r.type === 'LIKE') : false,
-    }));
+    // Add userLiked and verifiedEmployee status to each post
+    const postsWithStatus = posts.map(post => {
+      const isVerified = (post.author as { membership?: { status?: string } })?.membership?.status === 'VERIFIED';
+      return {
+        ...post,
+        metadata: {
+          ...((post.metadata as Record<string, unknown> | null) ?? {}),
+          verifiedEmployee: isVerified,
+        },
+        userLiked: identityId ? post.reactions.some(r => r.authorId === identityId && r.type === 'LIKE') : false,
+      };
+    });
 
-    return { posts: postsWithLikeStatus, nextCursor };
+    return { posts: postsWithStatus, nextCursor };
   }
 
   async getPostWithThread(companyId: string, postId: string, identityId: string) {
     const post = await this.prisma.post.findFirst({
       where: { id: postId, companyId, isDeleted: false },
       include: {
-        author: { select: { id: true, pseudonym: true, avatarSeed: true, reputation: true } },
+        author: { 
+          select: { 
+            id: true, 
+            pseudonym: true, 
+            avatarSeed: true, 
+            reputation: true,
+            membership: { select: { status: true } }
+          } 
+        },
         pollOptions: { select: { id: true, text: true, voteCount: true } },
         reactions: {
           where: { authorId: identityId, type: 'LIKE' },
@@ -140,8 +163,17 @@ export class CommunityService {
     }
 
     const userLiked = post.reactions.some(r => r.authorId === identityId && r.type === 'LIKE');
+    const isVerified = (post.author as { membership?: { status?: string } })?.membership?.status === 'VERIFIED';
 
-    return { ...post, comments: roots, userLiked };
+    return {
+      ...post,
+      metadata: {
+        ...((post.metadata as Record<string, unknown> | null) ?? {}),
+        verifiedEmployee: isVerified,
+      },
+      comments: roots,
+      userLiked,
+    };
   }
 
   async createPost(

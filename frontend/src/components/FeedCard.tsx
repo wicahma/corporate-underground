@@ -120,11 +120,11 @@ export function FeedCard({
                 <BadgeCheck className="w-4 h-4 text-[#0095f6] shrink-0" />
               ) : (
                 <span
-                  className="tag text-[10px] border-rose-500/40 text-rose-400 bg-rose-500/10 flex items-center gap-1"
-                  title="This user has not verified their employment with this company"
+                  className="tag text-[10px] border-amber-500/40 text-amber-300 bg-amber-500/10 flex items-center gap-1 font-medium px-2 py-0.5 rounded-full"
+                  title="Pengguna ini belum memverifikasi status karyawannya"
                 >
-                  <ShieldAlert className="w-2.5 h-2.5" />
-                  Not an Employee
+                  <ShieldAlert className="w-3 h-3 text-amber-400" />
+                  Unverified
                 </span>
               )}
               <time className="text-[13px] text-[#777777]">

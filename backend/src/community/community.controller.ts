@@ -146,19 +146,14 @@ export class CommunityController {
     @Param('companySlug') companySlug: string,
     @Body() dto: CreatePostDto,
   ) {
-    const { company, membership, identity } = await this.getIdentity(req, companySlug);
-
-    // Only verified members can post
-    if (membership.status !== 'VERIFIED') {
-      throw new ForbiddenException('Only verified members can post');
-    }
+    const { company, identity } = await this.getIdentity(req, companySlug);
 
     if (!dto.skipLeakCheck) {
       const leakCheck = this.privacyService.checkText(dto.content || '');
       if (leakCheck.hasLeak) {
         throw new BadRequestException({
-          message: 'Identity leak risk detected. Publish blocked.',
-          leakCheck,
+          message: 'Potential identity leak detected',
+          findings: leakCheck.findings,
         });
       }
     }
@@ -173,13 +168,7 @@ export class CommunityController {
     @Param('id') postId: string,
     @Body() dto: AddCommentDto,
   ) {
-    const { membership, identity } = await this.getIdentity(req, companySlug);
-    
-    // Only verified members can comment
-    if (membership.status !== 'VERIFIED') {
-      throw new ForbiddenException('Only verified members can comment');
-    }
-    
+    const { identity } = await this.getIdentity(req, companySlug);
     return this.communityService.addComment(identity.id, companySlug, postId, dto);
   }
 

@@ -13,6 +13,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { FeedCard } from "@/components/FeedCard";
 import { PostCreator } from "@/components/PostCreator";
+import { CompanyVerificationCard } from "@/components/CompanyVerificationCard";
 import { RequireAuth } from "@/components/RequireAuth";
 import { useAuth } from "@/lib/auth";
 import { Radio, RefreshCw, ShieldAlert, UserPlus, Loader2, Users } from "lucide-react";
@@ -45,6 +46,8 @@ function FeedInner({ companySlug }: { companySlug: string }) {
     (m) => m.company.slug === companySlug,
   );
   const isMember = Boolean(membership);
+  const isVerified = membership?.status === "VERIFIED";
+  const needsVerification = isMember && !isVerified;
 
   const load = useCallback(
     async (append = false) => {
@@ -243,6 +246,18 @@ function FeedInner({ companySlug }: { companySlug: string }) {
 
         {isMember && (
           <>
+            {/* Unverified Member Warning & Quick Verification Card */}
+            {needsVerification && (
+              <CompanyVerificationCard
+                companySlug={companySlug}
+                companyName={company?.name}
+                onVerified={() => {
+                  void refresh();
+                  void load(false);
+                }}
+              />
+            )}
+
             {/* Composer */}
             <PostCreator companySlug={companySlug} onCreated={handleCreated} />
 

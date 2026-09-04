@@ -119,12 +119,14 @@ function VerifyContent() {
     setBusy(true);
     setError(null);
     try {
-      const res = await verificationApi.claimCode(inviteCode.trim());
+      const slug = searchParams.get("company");
+      if (!slug) return;
+      const res = await verificationApi.claimCode(inviteCode.trim(), undefined);
       await refresh();
       const companyData = res.company as { slug?: string } | undefined;
-      const slug = companyData?.slug;
-      if (slug) {
-        router.push(`/c/${slug}`);
+      const resolvedSlug = companyData?.slug;
+      if (resolvedSlug) {
+        router.push(`/c/${resolvedSlug}`);
       } else {
         setNotice("Code accepted. Membership active.");
         setTimeout(() => router.push("/"), 900);

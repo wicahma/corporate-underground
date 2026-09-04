@@ -380,20 +380,20 @@ export const communityApi = {
 };
 
 export const verificationApi = {
-  requestEmail: (companySlug: string, email: string) =>
-    api<Record<string, unknown>>("/verification/request-email", {
+  requestEmail: (companySlug: string, workEmail: string) =>
+    api<{ requestId: string }>("/verification/request-email", {
       method: "POST",
-      body: JSON.stringify({ companySlug, email }),
+      body: JSON.stringify({ companySlug, workEmail, email: workEmail }),
     }),
-  verifyOtp: (requestId: string, code: string) =>
+  verifyOtp: (requestId: string, otp: string) =>
     api<Record<string, unknown>>("/verification/verify-otp", {
       method: "POST",
-      body: JSON.stringify({ requestId, code }),
+      body: JSON.stringify({ requestId, otp, code: otp }),
     }),
-  claimCode: (code: string) =>
+  claimCode: (secretCode: string, companySlug?: string) =>
     api<Record<string, unknown>>("/verification/claim-code", {
       method: "POST",
-      body: JSON.stringify({ code }),
+      body: JSON.stringify({ companySlug, secretCode, code: secretCode }),
     }),
 };
 
