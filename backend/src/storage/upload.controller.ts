@@ -1,7 +1,9 @@
 import {
-  Controller, Post, Get, Delete, Param, Body, Request,
+  Controller, Post, Get, Delete, Param, Body, Request, Res,
   UseGuards, UseInterceptors, UploadedFiles, BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { StorageService } from './storage.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -99,8 +101,19 @@ export class UploadController {
   }
 
   @Get('public/media/*')
-  async getPublicMedia(@Param() params: { '0': string }) {
+  async getPublicMedia(@Param() params: { '0': string }, @Res() res: Response) {
     const objectPath = params['0'];
-    return this.storage.getPublicMediaUrl(objectPath);
+    const result = await this.storage.getObjectStream(objectPath);
+    if (!result) {
+      throw new NotFoundException('Media not found');
+    }
+
+    res.setHeader('Content-Type', result.contentType);
+    if (result.contentLength) {
+      res.setHeader('Content-Length', result.contentLength);
+    }
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+
+    result.stream.pipe(res);
   }
 }

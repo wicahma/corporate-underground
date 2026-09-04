@@ -201,4 +201,21 @@ export class StorageService {
   async getPublicMediaUrl(objectPath: string) {
     return { url: `${this.publicUrl}/${objectPath}` };
   }
+
+  async getObjectStream(key: string) {
+    try {
+      const res = await this.s3.send(new GetObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+      }));
+      return {
+        stream: res.Body as NodeJS.ReadableStream,
+        contentType: res.ContentType || 'application/octet-stream',
+        contentLength: res.ContentLength,
+      };
+    } catch (err: unknown) {
+      if ((err as { name?: string }).name === 'NoSuchKey') return null;
+      throw err;
+    }
+  }
 }
