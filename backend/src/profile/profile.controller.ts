@@ -1,11 +1,19 @@
 import {
-  Controller, Get, Param, Request, Post, UseGuards,
+  Controller, Get, Param, Request, Post, Patch, Body, UseGuards,
   UseInterceptors, UploadedFile, BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { IsOptional, IsUrl, MaxLength } from 'class-validator';
 import { ProfileService } from './profile.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { SessionTimeoutGuard } from '../auth/session-timeout.guard';
+
+export class EmergencyUrlDto {
+  @IsOptional()
+  @IsUrl({ require_protocol: true })
+  @MaxLength(500)
+  emergencyUrl?: string | null;
+}
 
 @Controller()
 export class ProfileController {
@@ -39,5 +47,14 @@ export class ProfileController {
     @UploadedFile() file: Express.Multer.File,
   ) {
     return this.profileService.uploadProfilePhoto(req.user.sub, file);
+  }
+
+  @UseGuards(JwtAuthGuard, SessionTimeoutGuard)
+  @Patch('profile/emergency-url')
+  updateEmergencyUrl(
+    @Request() req: { user: { sub: string } },
+    @Body() dto: EmergencyUrlDto,
+  ) {
+    return this.profileService.updateEmergencyUrl(req.user.sub, dto.emergencyUrl || null);
   }
 }

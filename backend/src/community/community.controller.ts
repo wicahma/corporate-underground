@@ -39,6 +39,11 @@ export class CreatePostDto {
   unlockAt?: string;
 
   @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  mediaIds?: string[];
+
+  @IsOptional()
   @IsBoolean()
   skipLeakCheck?: boolean;
 }
@@ -157,16 +162,24 @@ export class CommunityController {
     const { company, identity } = await this.getIdentity(req, companySlug);
 
     if (!dto.skipLeakCheck) {
-      const leakCheck = await this.privacyService.checkText(dto.content || '');
-      if (this.privacyService.isLeak(leakCheck)) {
-        throw new BadRequestException({
-          message: 'ada indikasi data leak, pastikan terlebih dahulu bahwa pesanmu aman untuk di post',
-          error: {
-            leaked: true,
-            confidence: leakCheck.confidence,
-            reason: leakCheck.reason,
-          },
-        });
+      try {
+        const leakCheck = await this.privacyService.checkText(dto.content || '');
+        if (this.privacyService.isLeak(leakCheck)) {
+          throw new BadRequestException({
+            message: 'ada indikasi data leak, pastikan terlebih dahulu bahwa pesanmu aman untuk di post',
+            error: {
+              leaked: true,
+              confidence: leakCheck.confidence,
+              reason: leakCheck.reason,
+            },
+          });
+        }
+      } catch (err) {
+        if (err instanceof BadRequestException) {
+          throw err;
+        }
+        // Fail-open: log error and allow post to continue
+        console.warn('[community.controller] Privacy check failed, proceeding with post:', err);
       }
     }
 

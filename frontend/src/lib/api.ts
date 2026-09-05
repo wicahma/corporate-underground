@@ -114,6 +114,14 @@ export interface PollOption {
   voteCount: number;
 }
 
+export interface MediaFile {
+  id: string;
+  objectKey: string;
+  mimeType: string;
+  width?: number | null;
+  height?: number | null;
+}
+
 export interface Post {
   id: string;
   type: PostType;
@@ -124,6 +132,7 @@ export interface Post {
   createdAt: string;
   author: Author;
   pollOptions: PollOption[] | null;
+  mediaFiles: MediaFile[] | null;
   metadata: Record<string, unknown> | null;
   userLiked?: boolean;
 }
@@ -150,6 +159,7 @@ export interface Pulse {
 export interface UserMe {
   id: string;
   photoUrl?: string | null;
+  emergencyUrl?: string | null;
   memberships: { company: Company; status: string }[];
 }
 
@@ -206,6 +216,15 @@ export function normPost(raw: unknown): Post {
           voteCount: (o.voteCount as number) ?? 0,
         }))
       : null,
+    mediaFiles: Array.isArray(r.mediaFiles)
+      ? (r.mediaFiles as Record<string, unknown>[]).map((m) => ({
+          id: (m.id as string) ?? "",
+          objectKey: (m.objectKey as string) ?? "",
+          mimeType: (m.mimeType as string) ?? "",
+          width: (m.width as number) ?? null,
+          height: (m.height as number) ?? null,
+        }))
+      : null,
     metadata: (r.metadata as Record<string, unknown>) ?? null,
     userLiked: (r.userLiked as boolean) ?? false,
   };
@@ -237,6 +256,7 @@ export function normUser(raw: unknown): UserMe {
   return {
     id: (r.id as string) ?? "",
     photoUrl: (r.photoUrl as string) ?? null,
+    emergencyUrl: (r.emergencyUrl as string) ?? null,
     memberships: ms,
   };
 }
@@ -375,6 +395,7 @@ export const communityApi = {
       title?: string;
       content: string;
       pollOptions?: string[];
+      mediaIds?: string[];
       leakCheckConsent: boolean;
       metadata?: Record<string, unknown>;
     },
@@ -444,6 +465,11 @@ export const privacyApi = {
 
 export const profileApi = {
   getSelf: () => api<Record<string, unknown>>("/profile"),
+  updateEmergencyUrl: (emergencyUrl: string | null) =>
+    api<{ id: string; emergencyUrl: string | null }>("/profile/emergency-url", {
+      method: "PATCH",
+      body: JSON.stringify({ emergencyUrl }),
+    }),
   uploadPhoto: (file: File) => {
     const formData = new FormData();
     formData.append("photo", file);

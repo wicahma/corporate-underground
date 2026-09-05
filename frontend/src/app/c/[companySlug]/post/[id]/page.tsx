@@ -112,6 +112,15 @@ export default function PostDetailPage({
               ((rawPost.author as Record<string, unknown>)?.reputation as number) ??
               0,
           },
+          mediaFiles: Array.isArray(rawPost.mediaFiles)
+            ? (rawPost.mediaFiles as Record<string, unknown>[]).map((m) => ({
+                id: (m.id as string) ?? "",
+                objectKey: (m.objectKey as string) ?? "",
+                mimeType: (m.mimeType as string) ?? "",
+                width: (m.width as number) ?? null,
+                height: (m.height as number) ?? null,
+              }))
+            : null,
           pollOptions: Array.isArray(rawPost.pollOptions)
             ? (rawPost.pollOptions as Record<string, unknown>[]).map((o) => ({
                 id: (o.id as string) ?? "",
@@ -338,6 +347,23 @@ export default function PostDetailPage({
                     author={parseQuotedPost(post.content).quote!.author}
                     content={parseQuotedPost(post.content).quote!.text}
                   />
+                </div>
+              )}
+
+              {post.mediaFiles && post.mediaFiles.length > 0 && (
+                <div className="my-3 grid gap-2 grid-cols-1 sm:grid-cols-2 rounded-xl overflow-hidden border border-line">
+                  {post.mediaFiles.map((media) => (
+                    <div key={media.id} className="relative aspect-auto bg-black/20 flex items-center justify-center max-h-[400px] overflow-hidden">
+                      <img
+                        src={`/api/public/media/${media.objectKey}`}
+                        alt="Attached media"
+                        className="w-full h-auto object-cover max-h-[400px] rounded-lg hover:scale-[1.01] transition-transform cursor-pointer"
+                        onClick={() =>
+                          window.open(`/api/public/media/${media.objectKey}`, "_blank")
+                        }
+                      />
+                    </div>
+                  ))}
                 </div>
               )}
 

@@ -94,6 +94,7 @@ export class CommunityService {
         },
         _count: { select: { comments: true, reactions: true } },
         pollOptions: { select: { id: true, text: true, voteCount: true } },
+        mediaFiles: true,
         reactions: { 
           where: identityId ? { authorId: identityId, type: 'LIKE' } : undefined,
           select: { type: true, authorId: true }
@@ -127,16 +128,17 @@ export class CommunityService {
     const post = await this.prisma.post.findFirst({
       where: { id: postId, companyId, isDeleted: false },
       include: {
-        author: { 
-          select: { 
-            id: true, 
-            pseudonym: true, 
-            avatarSeed: true, 
+        author: {
+          select: {
+            id: true,
+            pseudonym: true,
+            avatarSeed: true,
             reputation: true,
-            membership: { select: { status: true } }
-          } 
+            membership: { select: { status: true } },
+          },
         },
         pollOptions: { select: { id: true, text: true, voteCount: true } },
+        mediaFiles: true,
         reactions: {
           where: { authorId: identityId, type: 'LIKE' },
           select: { type: true, authorId: true }
@@ -193,6 +195,7 @@ export class CommunityService {
       pollOptions?: string[];
       topics?: string[];
       unlockAt?: string;
+      mediaIds?: string[];
     },
   ) {
     if (!dto.content || !dto.content.trim()) {
@@ -232,6 +235,9 @@ export class CommunityService {
         pollOptions: isPoll
           ? { create: dto.pollOptions!.map((text) => ({ text })) }
           : undefined,
+        mediaFiles: dto.mediaIds && dto.mediaIds.length > 0
+          ? { connect: dto.mediaIds.map(id => ({ id })) }
+          : undefined,
       },
       include: {
         author: {
@@ -244,6 +250,7 @@ export class CommunityService {
           },
         },
         pollOptions: true,
+        mediaFiles: true,
       },
     });
 

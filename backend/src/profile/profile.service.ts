@@ -81,7 +81,16 @@ export class ProfileService {
       },
     });
     if (!user) throw new NotFoundException('User not found');
-    return { id: user.id, photoUrl: user.photoUrl, createdAt: user.createdAt, memberships: user.memberships };
+    return { id: user.id, photoUrl: user.photoUrl, emergencyUrl: user.emergencyUrl, createdAt: user.createdAt, memberships: user.memberships };
+  }
+
+  async updateEmergencyUrl(userId: string, emergencyUrl: string | null) {
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: { emergencyUrl },
+      select: { id: true, emergencyUrl: true },
+    });
+    return user;
   }
 
   async getPublicProfile(identifier: string) {

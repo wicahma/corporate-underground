@@ -12,6 +12,7 @@ model User {
   emailHash     String    @unique
   passwordHash  String
   photoUrl      String?
+  emergencyUrl  String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -38,6 +39,7 @@ model PasswordResetToken {
 model MediaFile {
   id            String    @id @default(uuid()) @db.Uuid
   userId        String    @db.Uuid
+  postId        String?   @db.Uuid
   objectKey     String    @unique
   originalName  String
   mimeType      String
@@ -45,6 +47,8 @@ model MediaFile {
   width         Int?
   height        Int?
   createdAt     DateTime  @default(now())
+
+  post          Post?     @relation(fields: [postId], references: [id], onDelete: SetNull)
 
   @@map("media_files")
 }
@@ -152,6 +156,7 @@ model Post {
   reactions     Reaction[]
   pollOptions   PollOption[]
   reports       Report[]
+  mediaFiles    MediaFile[]
 
   @@map("posts")
 }

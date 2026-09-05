@@ -24,6 +24,7 @@ import {
   Upload,
   X,
   Loader2,
+  Zap,
 } from "lucide-react";
 
 interface SelfMembership {
@@ -52,6 +53,7 @@ interface SelfMembership {
 interface SelfProfile {
   id: string;
   photoUrl?: string | null;
+  emergencyUrl?: string | null;
   createdAt: string;
   memberships: SelfMembership[];
 }
@@ -94,11 +96,18 @@ function ProfileContent() {
   // Logout modal state
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
+  // Emergency URL state
+  const [emergencyUrl, setEmergencyUrl] = useState<string | null>(null);
+  const [emergencySaved, setEmergencySaved] = useState<string | null>(null);
+  const [emergencyError, setEmergencyError] = useState<string | null>(null);
+  const [savingEmergency, setSavingEmergency] = useState(false);
+
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const data = await api<SelfProfile>("/profile");
         setProfile(data);
+        setEmergencyUrl(data.emergencyUrl || "");
       } catch (err: unknown) {
         setError((err as Error).message || "Failed to load profile.");
       } finally {
@@ -107,6 +116,27 @@ function ProfileContent() {
     };
     void fetchProfile();
   }, []);
+
+  const handleSaveEmergency = async () => {
+    setEmergencyError(null);
+    setEmergencySaved(null);
+    setSavingEmergency(true);
+    try {
+      const value = emergencyUrl?.trim() || "";
+      if (value && !/^https?:\/\//i.test(value)) {
+        setEmergencyError("URL must start with http:// or https://");
+        return;
+      }
+      const res = await profileApi.updateEmergencyUrl(value || null);
+      setEmergencySaved("Emergency URL updated.");
+      setEmergencyUrl(res.emergencyUrl || "");
+      await refreshAuth(); // Update global auth context agar PanicButtonHandler langsung dapat URL baru
+    } catch (err: unknown) {
+      setEmergencyError((err as Error).message || "Failed to save.");
+    } finally {
+      setSavingEmergency(false);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPhotoError(null);
@@ -538,6 +568,55 @@ function ProfileContent() {
               pseudonyms. Even server administrators cannot link your company
               pseudonym to your real email.
             </p>
+          </div>
+
+          {/* Emergency Panic Button Settings */}
+          <div className="card p-6 border-line bg-panel">
+            <div className="flex items-center gap-2 mb-4">
+              <Zap className="w-4 h-4 text-red-400" />
+              <span className="label">Emergency Panic Button</span>
+            </div>
+            <p className="text-[11px] text-dim mb-3 leading-relaxed">
+              Set a custom URL to instantly switch to when triggered (double-tap <kbd className="px-1 py-0.5 bg-panel2 border border-line rounded text-[10px]">ESC</kbd> or <kbd className="px-1 py-0.5 bg-panel2 border border-line rounded text-[10px]">Alt+X</kbd>).
+              Leave empty for default (Google Sheets).
+            </p>
+            <div className="space-y-2">
+              <input
+                type="url"
+                value={emergencyUrl || ""}
+                onChange={(e) => setEmergencyUrl(e.target.value)}
+                placeholder="https://docs.google.com/..."
+                className="input text-xs"
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => void handleSaveEmergency()}
+                  disabled={savingEmergency}
+                  className="btn btn-primary flex-1 py-2 text-xs"
+                >
+                  {savingEmergency ? "Saving..." : "Save URL"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEmergencyUrl("")}
+                  className="btn px-3 py-2 text-xs border-line"
+                >
+                  Reset
+                </button>
+              </div>
+              {emergencyError && (
+                <div className="text-[11px] text-red-400">{emergencyError}</div>
+              )}
+              {emergencySaved && (
+                <div className="text-[11px] text-emerald-400">{emergencySaved}</div>
+              )}
+              <div className="text-[10px] text-dim font-mono mt-2 space-y-0.5">
+                <div>• Trigger: Double ESC (within 400ms) or Alt+X</div>
+                <div>• Uses <code className="text-fg">window.location.replace()</code> — no back button</div>
+                <div>• Floating PANIC button always visible (bottom-right)</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

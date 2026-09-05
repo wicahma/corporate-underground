@@ -161,6 +161,24 @@ export function FeedCard({
               {parsed.mainText || post.content}
             </p>
 
+            {post.mediaFiles && post.mediaFiles.length > 0 && (
+              <div className="mt-3 grid gap-2 grid-cols-1 sm:grid-cols-2 rounded-xl overflow-hidden border border-line">
+                {post.mediaFiles.map((media) => (
+                  <div key={media.id} className="relative aspect-auto bg-black/20 flex items-center justify-center max-h-[400px] overflow-hidden">
+                    <img
+                      src={`/api/public/media/${media.objectKey}`}
+                      alt="Attached media"
+                      className="w-full h-auto object-cover max-h-[400px] rounded-lg hover:scale-[1.01] transition-transform cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.open(`/api/public/media/${media.objectKey}`, '_blank');
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
             {parsed.quote && (
               <QuotedPostCard
                 author={parsed.quote.author}

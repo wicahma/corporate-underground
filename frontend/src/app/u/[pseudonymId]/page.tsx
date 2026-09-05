@@ -268,6 +268,7 @@ export default function PublicProfilePage({
                         reputation: profile.stats.score,
                       },
                       pollOptions: null,
+                      mediaFiles: null,
                       metadata: null,
                     }),
                   )

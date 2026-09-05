@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
 import { ToastHost } from "@/components/ToastHost";
+import { PanicButtonHandler } from "@/components/PanicButtonHandler";
 
 export const metadata: Metadata = {
   title: {
@@ -22,6 +23,7 @@ export default function RootLayout({
         <AuthProvider>
           {children}
           <ToastHost />
+          <PanicButtonHandler />
         </AuthProvider>
       </body>
     </html>

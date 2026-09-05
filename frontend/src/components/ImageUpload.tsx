@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, forwardRef, useImperativeHandle } from "react";
 import { Upload, X, Loader2 } from "lucide-react";
 import { API_BASE } from "@/lib/api";
 
@@ -12,17 +12,22 @@ export interface UploadedImage {
   height?: number;
 }
 
+export interface ImageUploadHandle {
+  uploadPendingImages: () => Promise<UploadedImage[]>;
+  hasPending: () => boolean;
+}
+
 interface ImageUploadProps {
   onUploadComplete?: (images: UploadedImage[]) => void;
   maxImages?: number;
   maxSizeMB?: number;
 }
 
-export function ImageUpload({
-  onUploadComplete,
-  maxImages = 10,
-  maxSizeMB = 5,
-}: ImageUploadProps) {
+export const ImageUpload = forwardRef<ImageUploadHandle, ImageUploadProps>(
+  function ImageUpload(
+    { onUploadComplete, maxImages = 10, maxSizeMB = 5 },
+    ref,
+  ) {
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -100,8 +105,16 @@ export function ImageUpload({
     setPreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const uploadImages = async () => {
-    if (files.length === 0) return;
+  useImperativeHandle(ref, () => ({
+    uploadPendingImages: async () => {
+      if (files.length === 0) return [];
+      return uploadImages();
+    },
+    hasPending: () => files.length > 0,
+  }));
+
+  const uploadImages = async (): Promise<UploadedImage[]> => {
+    if (files.length === 0) return [];
 
     setUploading(true);
     setError(null);
@@ -147,8 +160,11 @@ export function ImageUpload({
       setFiles([]);
       setPreviews([]);
       setProgress(0);
+      return result;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed");
+      const msg = err instanceof Error ? err.message : "Upload failed";
+      setError(msg);
+      throw err;
     } finally {
       setUploading(false);
     }
@@ -220,7 +236,7 @@ export function ImageUpload({
         <div className="space-y-2">
           <button
             type="button"
-            onClick={uploadImages}
+            onClick={() => uploadImages()}
             disabled={uploading}
             className="btn btn-primary w-full"
           >
@@ -246,4 +262,4 @@ export function ImageUpload({
       )}
     </div>
   );
-}
+});

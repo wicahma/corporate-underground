@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { type PostType, communityApi, privacyApi, type LeakResult, type Post } from "@/lib/api";
 import { LeakDetectorModal } from "./LeakDetectorModal";
-import { ImageUpload, type UploadedImage } from "./ImageUpload";
+import { ImageUpload, type UploadedImage, type ImageUploadHandle } from "./ImageUpload";
 import { Identicon } from "./Identicon";
 import { useAuth } from "@/lib/auth";
 import { AlertCircle, Plus, Trash2, Image as ImageIcon } from "lucide-react";
@@ -26,6 +26,8 @@ export function PostCreator({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const imageUploadRef = useRef<ImageUploadHandle>(null);
+
   const handleAddPollOption = () => {
     if (pollOptions.length < 6) setPollOptions([...pollOptions, ""]);
   };
@@ -47,6 +49,13 @@ export function PostCreator({
     setLoading(true);
     setError(null);
     try {
+      // Auto-upload any pending images selected in dropzone before submitting post
+      let finalImages = [...images];
+      if (imageUploadRef.current && imageUploadRef.current.hasPending()) {
+        const newlyUploaded = await imageUploadRef.current.uploadPendingImages();
+        finalImages = [...finalImages, ...newlyUploaded];
+      }
+
       const validOptions =
         type === "POLL" ? pollOptions.filter((o) => o.trim().length > 0) : undefined;
 
@@ -55,6 +64,7 @@ export function PostCreator({
         title: title.trim() || undefined,
         content: content.trim(),
         pollOptions: validOptions,
+        mediaIds: finalImages.map((img) => img.id),
         leakCheckConsent: true,
       });
 
@@ -194,6 +204,7 @@ export function PostCreator({
             {showImageUpload && (
               <div className="py-2">
                 <ImageUpload
+                  ref={imageUploadRef}
                   onUploadComplete={(uploadedImages) => {
                     setImages([...images, ...uploadedImages]);
                   }}

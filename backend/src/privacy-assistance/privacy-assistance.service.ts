@@ -19,7 +19,7 @@ export class PrivacyAssistanceService {
   private readonly threshold = Number(
     process.env.LEAK_DETECTION_THRESHOLD || '0.7',
   );
-  private readonly timeoutMs = 30000;
+  private readonly timeoutMs = 30000; // 30 seconds max for AI check
 
   // --- Layer 1: deterministic rules (fast path, no AI needed) ---
   private readonly jobPatterns: { pattern: RegExp; label: string }[] = [
@@ -55,13 +55,20 @@ export class PrivacyAssistanceService {
     /@[a-z0-9_.]{3,}/i,
   ];
 
+  private readonly personalNamePatterns: RegExp[] = [
+    /\b(?:nama(?:ku| saya| gue| gw| aku)?\s+(?:adalah|ialah|yaitu)?\s*[a-zA-Z]{2,})\b/i,
+    /\b(?:aku|saya|gue|gw)\s+(?:dipanggil|dipanggilnya|namanya|namaku)\s+[a-zA-Z]{2,}\b/i,
+    /\b(?:kenalin(?: aku| gue| gw)?|halo aku|halo saya)\s+[a-zA-Z]{2,}\b/i,
+  ];
+
   // --- Layer 2: AI few-shot (catches subtle patterns rules miss) ---
   private buildPrompt(text: string): string {
     return `Anda mendeteksi kebocoran identitas di jejaring sosial anonim perusahaan.
-Teks yang menyebut pekerjaan, jabatan, peran, keunikan posisi, detail internal kantor, atau kontak = BOCOR.
+Teks yang menyebut nama orang/nama asli/identitas pribadi, pekerjaan, jabatan, peran, keunikan posisi, detail internal kantor, atau kontak = BOCOR.
 Teks opini/curhat umum tanpa semua itu = AMAN.
 
 Contoh:
+Teks: "namaku udin" -> {"leaked": true, "confidence": 0.95, "reason": "Menyebut nama asli (udin)"}
 Teks: "aku sebenarnya full stack developer" -> {"leaked": true, "confidence": 0.95, "reason": "Menyebut jabatan full stack developer, bisa mengidentifikasi penulis di perusahaan kecil"}
 Teks: "gabut di rumah, bingung mau ngapain" -> {"leaked": false, "confidence": 0.9, "reason": null}
 Teks: "saya CTO di perusahaan ini" -> {"leaked": true, "confidence": 1.0, "reason": "CTO adalah jabatan unik"}
@@ -71,6 +78,7 @@ Teks: "aku satu-satunya engineer di sini" -> {"leaked": true, "confidence": 0.95
 Teks: "keren sih, tapi aku nggak ngerti" -> {"leaked": false, "confidence": 0.95, "reason": null}
 Teks: "aku handle semua deploy backend sendiri" -> {"leaked": true, "confidence": 0.95, "reason": "Peran unik: pegang semua deploy"}
 Teks: "tim kami cuma 3 orang, gila sibuknya" -> {"leaked": false, "confidence": 0.8, "reason": null}
+Teks: "nama gue budi" -> {"leaked": true, "confidence": 0.95, "reason": "Menyebut nama asli (budi)"}
 
 Ikuti pola contoh. Jangan mengarang indikator yang tidak ada di teks.
 Jawab HANYA JSON: {"leaked": boolean, "confidence": number (0-1), "reason": string}
@@ -185,15 +193,17 @@ Teks: "${text}"
     }
 
     // Layer 2: AI few-shot for subtle cases
+    // Fail-open: if AI is slow/unavailable, let the post through (rules already caught obvious leaks)
     try {
       const raw = await this.callOllama(this.buildPrompt(text));
       return this.parseAiResponse(raw);
     } catch (err) {
-      const message =
+      const reason =
         err instanceof Error && err.name === 'AbortError'
-          ? 'Privacy check service timeout, silakan coba lagi.'
-          : 'Privacy check service unavailable, silakan coba lagi.';
-      throw new HttpException(message, HttpStatus.SERVICE_UNAVAILABLE);
+          ? 'AI privacy check timeout'
+          : 'AI privacy check unavailable';
+      console.warn(`[privacy-assistance] ${reason}, proceeding without AI check. ${text.slice(0, 50)}`);
+      return { leaked: false, confidence: 0 };
     }
   }
 
